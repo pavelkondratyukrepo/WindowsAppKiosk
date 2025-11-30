@@ -349,11 +349,11 @@ Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -
 If ($WindowsAppShell) {
     If ($AutoLogonKiosk) {
         $ConfigFile = Join-Path -Path $DirShellLauncherSettings -ChildPath "WindowsApp_AutoLogon.xml"
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 51 -Message "Enabling Windows App Shell Launcher with Autologon via WMI MDM bridge."
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 51 -Message "Enabling Windows App Shell Launcher with Autologon via WMI MDM bridge. This could take several minutes."
     }
     Else {
         $ConfigFile = Join-Path -Path $DirShellLauncherSettings -ChildPath "WindowsApp.xml"
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 51 -Message "Enabling Windows App Shell Launcher via WMI MDM bridge."
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 51 -Message "Enabling Windows App Shell Launcher via WMI MDM bridge. This could take several minutes."
     }
     $DestFile = Join-Path -Path $DirKiosk -ChildPath "AssignedAccessShellLauncher.xml"
     Copy-Item -Path $ConfigFile -Destination $DestFile -Force
@@ -461,13 +461,14 @@ if ($AutoLogonKiosk) {
 #region Local GPO Settings
 
 if ($WindowsAppShell) {
-    #$null = cmd /c lgpo.exe /t "$DirGPO\DisablePrivacyExperience.txt" '2>&1'
-    #Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled the First Logon Privacy Experience via the Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
     $null = cmd /c lgpo.exe /t "$DirGPO\ShellLauncher-DisableTaskMgr.txt" '2>&1'
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled Task Manager via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
     if ($AutoLogonKiosk) {
-   #     $null = cmd /c lgpo.exe /t "$DirGPO\LockScreen-DisableFastUserSwitching-HideLock-HideLogoff.txt" '2>&1'
-    #    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Removed logoff, change password, lock workstation, and fast user switching entry points via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+        $null = cmd /c lgpo.exe /t "$DirGPO\LockScreen-DisableFastUserSwitching-HideLock-HideLogoff.txt" '2>&1'
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Removed logoff, change password, lock workstation, and fast user switching entry points via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+    } elseif (!$SharedPC) {
+        $null = cmd /c lgpo.exe /t "$DirGPO\DisablePrivacyExperience.txt" '2>&1'
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled the First Logon Privacy Experience via the Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
     }
 }
 Else {
