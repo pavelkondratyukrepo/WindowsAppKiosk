@@ -366,7 +366,7 @@ If ($WindowsAppShell) {
     $ShellLauncher = Get-AssignedAccessShellLauncher
     $FormattedShellLauncher = Format-OutputXml -Configuration $ShellLauncher
     If ($ShellLauncher) {
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 52 -Message "Shell Launcher configuration successfully applied.`nConfiguration:`n`n$FormattedShellLauncher"
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 52 -Message "Shell Launcher configuration successfully applied.`n-----BEGIN CONFIGURATION-----`n$FormattedShellLauncher`n-----END CONFIGURATION-----"
     }
     Else {
         Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Error -EventId 53 -Message "Shell Launcher configuration failed. Computer should be restarted first."
@@ -400,7 +400,7 @@ Else {
     $Configuration = Get-AssignedAccessConfiguration
     If ($Configuration) {
         $FormattedConfiguration = Format-OutputXml -Configuration $Configuration
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 57 -Message "Assigned Access configuration successfully applied.`nConfiguration:`n`n$FormattedConfiguration"
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 57 -Message "Assigned Access configuration successfully applied.`n-----BEGIN CONFIGURATION-----`n$FormattedConfiguration`n-----END CONFIGURATION-----"
     }
     Else {
         Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Error -EventId 58 -Message "Assigned Access configuration failed. Computer should be restarted first."
