@@ -358,8 +358,10 @@ If ($WindowsAppShell) {
     $DestFile = Join-Path -Path $DirKiosk -ChildPath "AssignedAccessShellLauncher.xml"
     Copy-Item -Path $ConfigFile -Destination $DestFile -Force
     Set-AssignedAccessShellLauncher -FilePath $DestFile
-    If (Get-AssignedAccessShellLauncher) {
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 52 -Message "Shell Launcher configuration successfully applied."
+    $ShellLauncher = Get-AssignedAccessShellLauncher
+    $FormattedShellLauncher = Format-OutputXml -Configuration $ShellLauncher
+    If ($ShellLauncher) {
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 52 -Message "Shell Launcher configuration successfully applied.`nConfiguration:`n`n$FormattedShellLauncher"
     }
     Else {
         Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Error -EventId 53 -Message "Shell Launcher configuration failed. Computer should be restarted first."
@@ -390,8 +392,10 @@ Else {
     $DestFile = Join-Path $DirKiosk -ChildPath 'AssignedAccessConfiguration.xml'
     Copy-Item -Path $ConfigFile -Destination $DestFile -Force
     Set-AssignedAccessConfiguration -FilePath $DestFile
-    If (Get-AssignedAccessConfiguration) {
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 57 -Message "Assigned Access configuration successfully applied."
+    $Configuration = Get-AssignedAccessConfiguration
+    If ($Configuration) {
+        $FormattedConfiguration = Format-OutputXml -Configuration $Configuration
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 57 -Message "Assigned Access configuration successfully applied.`nConfiguration:`n`n$FormattedConfiguration"
     }
     Else {
         Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Error -EventId 58 -Message "Assigned Access configuration failed. Computer should be restarted first."
@@ -400,7 +404,6 @@ Else {
 }
 
 #endregion Assigned Access Launcher
-
 
 #region Provisioning Packages
 

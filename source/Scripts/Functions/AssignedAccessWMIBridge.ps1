@@ -6,7 +6,7 @@ function Get-AssignedAccessCspBridgeWmi {
 
 function Set-AssignedAccessShellLauncher {
     param (
-        [Parameter(Mandatory=$True)]
+        [Parameter(Mandatory = $True)]
         [String] $FilePath
     )
 
@@ -33,7 +33,7 @@ function Get-AssignedAccessConfiguration {
 
 function Set-AssignedAccessConfiguration {
     param (
-        [Parameter(Mandatory=$True)]
+        [Parameter(Mandatory = $True)]
         [string] $FilePath
     )
 
@@ -48,4 +48,25 @@ function Clear-AssignedAccessConfiguration {
     $AssignedAccessCsp = Get-AssignedAccessCspBridgeWmi
     $AssignedAccessCsp.Configuration = $NULL
     Set-CimInstance -CimInstance $AssignedAccessCsp
+}
+
+Function Format-OutputXml {
+    param (
+        [Parameter(Mandatory = $True)]
+        [string] $Configuration
+    )
+    try {
+        $XmlDoc = [xml]$Configuration
+        $StringWriter = New-Object System.IO.StringWriter
+        $XmlWriter = [System.Xml.XmlTextWriter]::new($StringWriter)
+        $XmlWriter.Formatting = [System.Xml.Formatting]::Indented
+        $XmlWriter.Indentation = 2
+        $XmlDoc.WriteContentTo($XmlWriter)
+        $XmlWriter.Flush()
+        $StringWriter.ToString()
+    }
+    catch {
+        # Fallback if XML formatting fails
+        $Configuration | Out-String
+    }
 }
