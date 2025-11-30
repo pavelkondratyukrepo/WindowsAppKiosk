@@ -465,7 +465,10 @@ if ($WindowsAppShell) {
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled the First Logon Privacy Experience via the Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
     $null = cmd /c lgpo.exe /t "$DirGPO\ShellLauncher-DisableTaskMgr.txt" '2>&1'
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled Task Manager via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
-
+    if ($AutoLogonKiosk) {
+        $null = cmd /c lgpo.exe /t "$DirGPO\LockScreen-DisableFastUserSwitching-HideLock-HideLogoff.txt" '2>&1'
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Removed logoff, change password, lock workstation, and fast user switching entry points via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+    }
 }
 Else {
     # Hide Windows Security notification area control
