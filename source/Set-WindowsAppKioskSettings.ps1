@@ -461,8 +461,10 @@ if ($AutoLogonKiosk) {
 #region Local GPO Settings
 
 if ($WindowsAppShell) {
-    $null = cmd /c lgpo.exe /t "$DirGPO\ShellLauncher-DisableTaskMgr.txt" '2>&1'
+    $null = cmd /c lgpo.exe /t "$DirGPO\LockScreen-DisableTaskMgr.txt" '2>&1'
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled Task Manager via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+    $null = cmd /c lgpo.exe /t "$DirGPO\HideAndRestrictDrives.txt" '2>&1'
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Hid and restricted access to drives via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
     if ($AutoLogonKiosk) {
         $null = cmd /c lgpo.exe /t "$DirGPO\LockScreen-DisableFastUserSwitching-HideLock-HideLogoff.txt" '2>&1'
         Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Removed logoff, change password, lock workstation, and fast user switching entry points via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
