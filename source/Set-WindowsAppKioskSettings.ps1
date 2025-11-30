@@ -95,6 +95,9 @@ This switch parameter determines if power management policies are configured via
 .PARAMETER SleepAfterSeconds
 This integer parameter specifies the number of seconds of inactivity before the system automatically goes to sleep. This setting works in conjunction with SetPowerPolicies to manage power consumption in shared PC environments. Default is 3600 seconds (1 hour).
 
+.PARAMETER Reinstall
+This switch parameter allows the script to be re-run on a system that has already been configured. It triggers the removal of existing kiosk settings before applying the new configuration.
+
 .PARAMETER Version
 This version parameter allows tracking of the installed version using configuration management software such as Microsoft Endpoint Manager or Microsoft Endpoint Configuration Manager by querying the value of the registry value: HKLM\Software\Kiosk\version.
 
@@ -162,6 +165,9 @@ param (
 
     [Parameter()]
     [int]$SleepAfterSeconds = 3600,
+
+    [Parameter()]
+    [switch]$Reinstall,
 
     [version]$Version = '1.0.0'
 )
@@ -281,11 +287,10 @@ Copy-Item -Path "$DirTools\lgpo.exe" -Destination "$env:SystemRoot\System32" -Fo
 #endregion Initialization
 
 #region Remove Previous Versions
-
-# Run Removal Script first in the event that a previous version is installed or in the event of a failed installation.
-Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 3 -Message 'Running removal script in case of previous installs or failures.'
-& "$Script:Dir\Remove-KioskSettings.ps1" -Reinstall
-
+If ($Reinstall) {
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 2 -Message "Reinstall switch detected. Existing kiosk settings will be removed before applying new configuration."
+    & "$Script:Dir\Remove-KioskSettings.ps1" -Reinstall
+}
 #endregion Previous Version Removal
 
 #region Remove Apps
