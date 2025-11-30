@@ -15,9 +15,6 @@ function Set-AssignedAccessShellLauncher {
     $AssignedAccessCsp = Get-AssignedAccessCspBridgeWmi
     $AssignedAccessCsp.ShellLauncher = $EscapedXml
     Set-CimInstance -CimInstance $AssignedAccessCsp
-    
-    # get a new instance and print the value
-    (Get-AssignedAccessCspBridgeWmi).ShellLauncher
 }
 
 function Clear-AssignedAccessShellLauncher {
@@ -45,7 +42,6 @@ function Set-AssignedAccessConfiguration {
     $EncodedXml = [System.Net.WebUtility]::HtmlEncode($Xml)
     $AssignedAccessCsp.Configuration = $EncodedXml
     Set-CimInstance -CimInstance $AssignedAccessCsp
-    (Get-AssignedAccessCspBridgeWmi).Configuration
 }
 
 function Clear-AssignedAccessConfiguration {
