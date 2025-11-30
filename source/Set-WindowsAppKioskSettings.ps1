@@ -447,28 +447,18 @@ ForEach ($Package in $ProvisioningPackages) {
 
 #endregion Provisioning Packages
 
-#region User Logos
-if ($AutoLogonKiosk) {
-    $null = cmd /c lgpo.exe /t "$DirGPO\AutoLogon-UserLogos.txt" '2>&1'
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 70 -Message "Configured User Logos to use default via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 71 -Message "Backing up current User Logo files to '$DirKiosk\UserLogos'."
-    Copy-Item -Path "$env:ProgramData\Microsoft\User Account Pictures" -Destination "$DirKiosk\UserLogos" -Force
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 72 -Message "Copying User Logo files to '$env:ProgramData\Microsoft\User Account Pictures'."
-    Get-ChildItem -Path $DirUserLogos | Copy-Item -Destination "$env:ProgramData\Microsoft\User Account Pictures" -Force
-}
-#endregion User Logos
-
 #region Local GPO Settings
 
 if ($WindowsAppShell) {
-    $null = cmd /c lgpo.exe /t "$DirGPO\LockScreen-DisableTaskMgr.txt" '2>&1'
+    $null = cmd /c lgpo.exe /t "$DirGPO\Ctrl+Alt+Del-HideTaskManager.txt" '2>&1'
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled Task Manager via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
     $null = cmd /c lgpo.exe /t "$DirGPO\HideAndRestrictDrives.txt" '2>&1'
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Hid and restricted access to drives via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
     if ($AutoLogonKiosk) {
-        $null = cmd /c lgpo.exe /t "$DirGPO\LockScreen-DisableFastUserSwitching-HideLock-HideLogoff.txt" '2>&1'
+        $null = cmd /c lgpo.exe /t "$DirGPO\Ctrl+Alt+Del-HideLock-HideSignOut-HideSwitchUser.txt" '2>&1'
         Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Removed logoff, change password, lock workstation, and fast user switching entry points via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
-    } elseif (!$SharedPC) {
+    }
+    If (!$SharedPC) {
         $null = cmd /c lgpo.exe /t "$DirGPO\DisablePrivacyExperience.txt" '2>&1'
         Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled the First Logon Privacy Experience via the Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
     }
@@ -481,14 +471,22 @@ Else {
         $null = cmd /c lgpo.exe /t "$DirGPO\MultiApp-ShowSettings.txt" '2>&1'
         Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Restricted Settings App and Control Panel to allow only Display Settings for kiosk user via Non-Administrators Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
     }
+    If ($AutoLogonKiosk) {
+        $null = cmd /c lgpo.exe /t "$DirGPO\Ctrl+Alt+Del-HideLock.txt" '2>&1'
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Removed Lock from the CTRL+ALT+DEL screen via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+    }
 }
 
 If ($AutoLogonKiosk) {
     # Disable Password requirement for screen saver lock and wake from sleep.
-    #$null = cmd /c lgpo.exe /t "$DirGPO\AutoLogon-DisablePasswordForUnlock.txt" '2>&1'
-    #Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled password requirement for screen saver lock and wake from sleep via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
-    #$null = cmd /c lgpo.exe /t "$DirGPO\AutoLogon-HideLockLogoff.txt" '2>&1'
-    #Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Removed logoff, change password, lock workstation, and fast user switching entry points. `nlgpo.exe Exit Code: [$LastExitCode]"
+    $null = cmd /c lgpo.exe /t "$DirGPO\AutoLogon-DisablePasswordForUnlock.txt" '2>&1'
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled password requirement for screen saver lock and wake from sleep via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+    $null = cmd /c lgpo.exe /t "$DirGPO\AutoLogon-UserLogos.txt" '2>&1'
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 70 -Message "Configured User Logos to use default via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 71 -Message "Backing up current User Logo files to '$DirKiosk\UserLogos'."
+    Copy-Item -Path "$env:ProgramData\Microsoft\User Account Pictures" -Destination "$DirKiosk\UserLogos" -Force
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 72 -Message "Copying User Logo files to '$env:ProgramData\Microsoft\User Account Pictures'."
+    Get-ChildItem -Path $DirUserLogos | Copy-Item -Destination "$env:ProgramData\Microsoft\User Account Pictures" -Force
 }
 Else {
     If ($SmartCardRemovalAction) {
