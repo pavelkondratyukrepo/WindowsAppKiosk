@@ -464,7 +464,6 @@ if ($WindowsAppShell) {
     }
 }
 Else {
-    # Hide Windows Security notification area control
     $null = cmd /c lgpo.exe /t "$DirGPO\HideWindowsSecurityControl.txt" '2>&1'
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Hide Windows Security notification area control via Local Group Policy Computer Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     If ($ShowSettings) {
@@ -478,7 +477,6 @@ Else {
 }
 
 If ($AutoLogonKiosk) {
-    # Disable Password requirement for screen saver lock and wake from sleep.
     $null = cmd /c lgpo.exe /t "$DirGPO\DisablePasswordForUnlock.txt" '2>&1'
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled password requirement for screen saver lock and wake from sleep via Local Group Policy Computer Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     # Configure User Logos
@@ -494,7 +492,6 @@ If ($AutoLogonKiosk) {
 Else {
     If ($SmartCardRemovalAction) {
         # Ensure Smart Card Removal Policy service is running and set to automatic
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Configuring Smart Card Removal Policy service."
         $SCPolicyService = Get-Service -Name 'SCPolicySvc' -ErrorAction Stop
         If ($SCPolicyService.StartType -ne 'Automatic') {
             Set-Service -Name 'SCPolicySvc' -StartupType Automatic
@@ -527,17 +524,22 @@ If ($ConfigureAutomaticMaintenance) {
     
     If ($MaintenanceRandomDelay -eq 0) {
         # No random delay - just replace activation boundary
-        (Get-Content -Path $SourceFile).Replace('<ActivationBoundary>', $MaintenanceActivationTimeISO) | Out-File $OutFile
+        ((Get-Content -Path $SourceFile).Replace('<ActivationBoundary>', $MaintenanceActivationTimeISO)) | Out-File $OutFile
     }
     Else {
         # Include random delay - replace both values and add randomized setting
-        $content = (Get-Content -Path $SourceFile).Replace('<ActivationBoundary>', $MaintenanceActivationTimeISO).Replace('<RandomDelay>', $MaintenanceRandomDelayPT)
+        $content = (Get-Content -Path $SourceFile).Replace('<ActivationBoundary>', $MaintenanceActivationTimeISO)
         $content += @(
             '',
             'Computer',
             'Software\Policies\Microsoft\Windows\Task Scheduler\Maintenance',
             'Randomized',
-            'DWORD:1'
+            'DWORD:1',
+            '',
+            'Computer',
+            'Software\Policies\Microsoft\Windows\Task Scheduler\Maintenance',
+            'RandomDelay',
+            "SZ:$MaintenanceRandomDelayPT"
         )
         $content | Out-File $OutFile
     }    
@@ -708,7 +710,7 @@ If (Test-Path -Path 'HKLM:\Default') {
 #region AppLocker Configuration
 
 If ($WindowsAppShell) {
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 120 -Message "Applying AppLocker Policy to disable Explorer, Edge, and Search for the Kiosk User."
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 120 -Message "Applying AppLocker Policy to disable Edge, Notepad, and Search for the Kiosk User."
     # If there is an existing applocker policy, back it up and store its XML for restore.
     # Else, copy a blank policy to the restore location.
     # Then apply the new AppLocker Policy
