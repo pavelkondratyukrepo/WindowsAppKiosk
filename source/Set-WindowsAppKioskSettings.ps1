@@ -477,10 +477,10 @@ Else {
 
 If ($AutoLogonKiosk) {
     # Disable Password requirement for screen saver lock and wake from sleep.
-    $null = cmd /c lgpo.exe /t "$DirGPO\AutoLogon-DisablePasswordForUnlock.txt" '2>&1'
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled password requirement for screen saver lock and wake from sleep via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
-    $null = cmd /c lgpo.exe /t "$DirGPO\AutoLogon-HideLockLogoff.txt" '2>&1'
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Removed logoff, change password, lock workstation, and fast user switching entry points. `nlgpo.exe Exit Code: [$LastExitCode]"
+    #$null = cmd /c lgpo.exe /t "$DirGPO\AutoLogon-DisablePasswordForUnlock.txt" '2>&1'
+    #Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled password requirement for screen saver lock and wake from sleep via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+    #$null = cmd /c lgpo.exe /t "$DirGPO\AutoLogon-HideLockLogoff.txt" '2>&1'
+    #Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Removed logoff, change password, lock workstation, and fast user switching entry points. `nlgpo.exe Exit Code: [$LastExitCode]"
 }
 Else {
     If ($SmartCardRemovalAction) {
