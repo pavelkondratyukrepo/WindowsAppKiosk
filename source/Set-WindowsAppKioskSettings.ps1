@@ -451,42 +451,45 @@ ForEach ($Package in $ProvisioningPackages) {
 
 if ($WindowsAppShell) {
     $null = cmd /c lgpo.exe /t "$DirGPO\Ctrl+Alt+Del-HideTaskManager.txt" '2>&1'
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled Task Manager via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled Task Manager via Local Group Policy Non-Administrators Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     $null = cmd /c lgpo.exe /t "$DirGPO\HideAndRestrictDrives.txt" '2>&1'
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Hid and restricted access to drives via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Hid and restricted access to drives via Local Group Policy Non-Administrators Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     if ($AutoLogonKiosk) {
         $null = cmd /c lgpo.exe /t "$DirGPO\Ctrl+Alt+Del-HideLock-HideSignOut-HideSwitchUser.txt" '2>&1'
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Removed logoff, change password, lock workstation, and fast user switching entry points via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Removed logoff, change password, lock workstation, and fast user switching entry points via Local Group Policy Non-Administrators Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     }
     If (!$SharedPC) {
         $null = cmd /c lgpo.exe /t "$DirGPO\DisablePrivacyExperience.txt" '2>&1'
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled the First Logon Privacy Experience via the Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled the First Logon Privacy Experience via the Local Group Policy Computer Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     }
 }
 Else {
     # Hide Windows Security notification area control
-    $null = cmd /c lgpo.exe /t "$DirGPO\MultiApp-HideWindowsSecurityControl.txt" '2>&1'
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Hide Windows Security notification area control via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+    $null = cmd /c lgpo.exe /t "$DirGPO\HideWindowsSecurityControl.txt" '2>&1'
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Hide Windows Security notification area control via Local Group Policy Computer Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     If ($ShowSettings) {
-        $null = cmd /c lgpo.exe /t "$DirGPO\MultiApp-ShowSettings.txt" '2>&1'
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Restricted Settings App and Control Panel to allow only Display Settings for kiosk user via Non-Administrators Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+        $null = cmd /c lgpo.exe /t "$DirGPO\RestrictControlPanelAndSettings.txt" '2>&1'
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Restricted Settings App and Control Panel to allow only Display Settings for kiosk user via Local Group Policy Non-Administrators Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     }
-    If ($AutoLogonKiosk) {
+    If ($SharedPC) {
         $null = cmd /c lgpo.exe /t "$DirGPO\Ctrl+Alt+Del-HideLock.txt" '2>&1'
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Removed Lock from the CTRL+ALT+DEL screen via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Removed Lock from the CTRL+ALT+DEL screen via Local Group Policy Non-Administrators Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     }
 }
 
 If ($AutoLogonKiosk) {
     # Disable Password requirement for screen saver lock and wake from sleep.
-    $null = cmd /c lgpo.exe /t "$DirGPO\AutoLogon-DisablePasswordForUnlock.txt" '2>&1'
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled password requirement for screen saver lock and wake from sleep via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
-    $null = cmd /c lgpo.exe /t "$DirGPO\AutoLogon-UserLogos.txt" '2>&1'
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 70 -Message "Configured User Logos to use default via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+    $null = cmd /c lgpo.exe /t "$DirGPO\DisablePasswordForUnlock.txt" '2>&1'
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled password requirement for screen saver lock and wake from sleep via Local Group Policy Computer Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
+    # Configure User Logos
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 70 -Message "Starting User Logo configuration."
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 71 -Message "Backing up current User Logo files to '$DirKiosk\UserLogos'."
     Copy-Item -Path "$env:ProgramData\Microsoft\User Account Pictures" -Destination "$DirKiosk\UserLogos" -Force
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 72 -Message "Copying User Logo files to '$env:ProgramData\Microsoft\User Account Pictures'."
     Get-ChildItem -Path $DirUserLogos | Copy-Item -Destination "$env:ProgramData\Microsoft\User Account Pictures" -Force
+    # Configure User Logos to use default images
+    $null = cmd /c lgpo.exe /t "$DirGPO\UserLogosDefault.txt" '2>&1'
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 70 -Message "Configured User Logos to use default via Local Group Policy Computer Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
 }
 Else {
     If ($SmartCardRemovalAction) {
@@ -500,11 +503,11 @@ Else {
     }
     If ($SmartCardRemovalAction -eq 'Lock') {
         $null = cmd /c lgpo /s "$DirGPO\SmartCardLockWorkstation.inf" '2>&1'
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Set 'Interactive logon: Smart Card Removal behavior' to 'Lock Workstation' via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Set 'Interactive logon: Smart Card Removal behavior' to 'Lock Workstation' via Local Group Policy Computer Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     }
     ElseIf ($SmartCardRemovalAction -eq 'Logoff') {
         $null = cmd /c lgpo /s "$DirGPO\SmartCardLogOffWorkstation.inf" '2>&1'
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Set 'Interactive logon: Smart Card Removal behavior' to 'Force Logoff Workstation' via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Set 'Interactive logon: Smart Card Removal behavior' to 'Force Logoff Workstation' via Local Group Policy Computer Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     }
     If ($LockScreenAfterSeconds) {
         # Will lock the system via the inactivity timeout built-in policy which locks the screen after inactivity.
@@ -512,7 +515,7 @@ Else {
         $outFile = Join-Path -Path "$env:SystemRoot\SystemTemp" -ChildPath 'MachineInactivityTimeout.inf'
         (Get-Content -Path $SourceFile).Replace('<Seconds>', ($LockScreenAfterSeconds)) | Out-File $OutFile
         $null = cmd /c lgpo /s "$outFile" '2>&1'
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Set 'Interactive logon: Machine inactivity limit' to '$LockScreenAfterSeconds seconds' via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Set 'Interactive logon: Machine inactivity limit' to '$LockScreenAfterSeconds seconds' via Local Group Policy Computer Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
         Remove-Item -Path $outFile -Force -ErrorAction SilentlyContinue
     }
 }
@@ -539,7 +542,7 @@ If ($ConfigureAutomaticMaintenance) {
         $content | Out-File $OutFile
     }    
     $null = cmd /c lgpo /s "$outFile" '2>&1'
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Configured Automatic Maintenance settings via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Configured Automatic Maintenance settings via Local Group Policy Computer Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     Remove-Item -Path $outFile -Force -ErrorAction SilentlyContinue
 }
 
@@ -549,7 +552,7 @@ If ($SetPowerPolicies) {
     $outFile = Join-Path -Path "$env:SystemRoot\SystemTemp" -ChildPath 'PowerSettings.txt'
     (Get-Content -Path $SourceFile).Replace('<SleepTimeOut>', $SleepAfterSeconds) | Out-File $OutFile
     $null = cmd /c lgpo /s "$outFile" '2>&1'
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Configured Power Settings via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Configured Power Settings via Local Group Policy Computer Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     Remove-Item -Path $outFile -Force -ErrorAction SilentlyContinue
 }
 
