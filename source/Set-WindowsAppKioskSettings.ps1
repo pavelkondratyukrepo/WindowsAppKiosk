@@ -479,7 +479,7 @@ Else {
         $null = cmd /c lgpo.exe /t "$DirGPO\RestrictControlPanelAndSettings.txt" '2>&1'
         Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Restricted Settings App and Control Panel to allow only Display Settings for kiosk user via Local Group Policy Non-Administrators Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     }
-    If ($SharedPC) {
+    If ($AutoLogonKiosk) {
         $null = cmd /c lgpo.exe /t "$DirGPO\Ctrl+Alt+Del-HideLock.txt" '2>&1'
         Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Removed Lock from the CTRL+ALT+DEL screen via Local Group Policy Non-Administrators Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     }
