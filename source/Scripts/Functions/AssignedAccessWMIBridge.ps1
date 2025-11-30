@@ -58,10 +58,15 @@ Function Format-OutputXml {
     try {
         $XmlDoc = [xml]$Configuration
         $StringWriter = New-Object System.IO.StringWriter
-        $XmlWriter = [System.Xml.XmlTextWriter]::new($StringWriter)
-        $XmlWriter.Formatting = [System.Xml.Formatting]::Indented
-        $XmlWriter.Indentation = 2
-        $XmlDoc.WriteContentTo($XmlWriter)
+        $XmlSettings = New-Object System.Xml.XmlWriterSettings
+        $XmlSettings.Indent = $true
+        $XmlSettings.IndentChars = "  "
+        $XmlSettings.NewLineChars = "`r`n"
+        $XmlSettings.NewLineHandling = [System.Xml.NewLineHandling]::Replace
+        $XmlSettings.OmitXmlDeclaration = $false
+        $XmlSettings.ConformanceLevel = [System.Xml.ConformanceLevel]::Document        
+        $XmlWriter = [System.Xml.XmlWriter]::Create($StringWriter, $XmlSettings)
+        $XmlDoc.Save($XmlWriter)
         $XmlWriter.Flush()
         $StringWriter.ToString()
     }
