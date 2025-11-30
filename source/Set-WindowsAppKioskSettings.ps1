@@ -142,15 +142,15 @@ param (
 
     [Parameter()]
     [ValidateScript({
-        if ($_ -match '^\d{2}:\d{2}:\d{2}$') {
-            $timeSpan = [TimeSpan]::ParseExact($_, 'hh\:mm\:ss', $null)
-            if ($timeSpan -ge [TimeSpan]::Zero -and $timeSpan -lt [TimeSpan]::FromHours(24)) {
-                return $true
+            if ($_ -match '^\d{2}:\d{2}:\d{2}$') {
+                $timeSpan = [TimeSpan]::ParseExact($_, 'hh\:mm\:ss', $null)
+                if ($timeSpan -ge [TimeSpan]::Zero -and $timeSpan -lt [TimeSpan]::FromHours(24)) {
+                    return $true
+                }
+                throw "Time must be between 00:00:00 and 23:59:59"
             }
-            throw "Time must be between 00:00:00 and 23:59:59"
-        }
-        throw "Time must be in HH:mm:ss format (e.g., 02:00:00, 14:30:00, 23:59:59)"
-    })]
+            throw "Time must be in HH:mm:ss format (e.g., 02:00:00, 14:30:00, 23:59:59)"
+        })]
     [string]$MaintenanceActivationTime = '00:00:00',
 
     [Parameter()]
@@ -406,35 +406,43 @@ Else {
 
 $ProvisioningPackages = @()
 
-Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 60 -Message "Adding Provisioning Package to disable Windows Spotlight"
-$ProvisioningPackages += Join-Path -Path $DirProvisioningPackages -ChildPath 'DisableWindowsSpotlight.ppkg'
-
-If (!$SharedPC -or $AutoLogonKiosk) {
-    # This setting is already included in the SharedPC provisioning package, so only add it when not using SharedPC mode.
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 61 -Message "Adding Provisioning Package to disable first sign-in animation"
-    $ProvisioningPackages += Join-Path -Path $DirProvisioningPackages -ChildPath 'DisableFirstLogonAnimation.ppkg'
+$ProvisioningPackages += [PSCustomObject]@{
+    Name    = 'DisableWindowsSpotlight.ppkg'
+    Purpose = "Disable Windows Spotlight features to prevent unwanted content on lock screen and optimize performance"
 }
 
 If ($SharedPC) {
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 62 -Message "Adding Provisioning Package to enable SharedPC mode"
-    $ProvisioningPackages += Join-Path -Path $DirProvisioningPackages -ChildPath 'SharedPC-DirectLogon.ppkg'
+    $ProvisioningPackages += [PSCustomObject]@{
+        Name    = 'SharedPC.ppkg'
+        Purpose = "Enable SharedPC mode for automatic profile cleanup and direct logon"
+    }
 }
-
-If ($AutoLogonKiosk) {
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 63 -Message "Adding Provisioning Package to enable SharedPC mode without account management"
-    $ProvisioningPackages += Join-Path -Path $DirProvisioningPackages -ChildPath 'SharedPC-AutoLogon.ppkg'
+Else {
+    # These settings are already included in the SharedPC provisioning package, so only add it when not using SharedPC mode.
+    $ProvisioningPackages += [PSCustomObject]@{
+        Name    = 'DisableFirstLogonAnimation.ppkg'
+        Purpose = "Disable first sign-in animation to speed up initial logon"
+    }
+    $ProvisioningPackages += [PSCustomObject]@{
+        Name    = 'DisableAdvertisingId.ppkg'
+        Purpose = "Disable advertising ID for privacy and to prevent targeted ads"
+    }
 }
 
 If (!$WindowsAppShell) {
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 64 -Message "Adding Provisioning Package to hide Start Menu Elements"
-    $ProvisioningPackages += Join-Path -Path $DirProvisioningPackages -ChildPath 'HideStartMenuElements.ppkg'
+    $ProvisioningPackages += [PSCustomObject]@{
+        Name    = 'HideStartMenuElements.ppkg'
+        Purpose = "Hide Start Menu elements to reduce interface complexity in kiosk mode"
+    }
 }
 
 New-Item -Path "$DirKiosk\ProvisioningPackages" -ItemType Directory -Force | Out-Null
 ForEach ($Package in $ProvisioningPackages) {
-    Copy-Item -Path $Package -Destination "$DirKiosk\ProvisioningPackages" -Force | Out-Null
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventID 65 -Message "Installing $($Package)."
-    Install-ProvisioningPackage -PackagePath $Package -ForceInstall -QuietInstall
+    $SourcePath = Join-Path -Path $DirProvisioningPackages -ChildPath $Package.Name
+    $DestPath = Join-Path -Path $DirKiosk -ChildPath "ProvisioningPackages\$($Package.Name)"
+    Copy-Item -Path $SourcePath -Destination $DestPath -Force | Out-Null
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventID 65 -Message "Installing $($Package.Name). Purpose: $($Package.Purpose)"
+    Install-ProvisioningPackage -PackagePath $DestPath -ForceInstall -QuietInstall
 }
 
 #endregion Provisioning Packages
@@ -455,16 +463,16 @@ if ($AutoLogonKiosk) {
 if ($WindowsAppShell) {
     $null = cmd /c lgpo.exe /t "$DirGPO\ShellLauncher-DisableTaskMgr.txt" '2>&1'
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled Task Manager via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+
 }
 Else {
     # Hide Windows Security notification area control
     $null = cmd /c lgpo.exe /t "$DirGPO\MultiApp-HideWindowsSecurityControl.txt" '2>&1'
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Hide Windows Security notification area control via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
-}
-
-If ($ShowSettings) {
-    $null = cmd /c lgpo.exe /t "$DirGPO\MultiApp-ShowSettings.txt" '2>&1'
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Restricted Settings App and Control Panel to allow only Display Settings for kiosk user via Non-Administrators Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+    If ($ShowSettings) {
+        $null = cmd /c lgpo.exe /t "$DirGPO\MultiApp-ShowSettings.txt" '2>&1'
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Restricted Settings App and Control Panel to allow only Display Settings for kiosk user via Non-Administrators Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
+    }
 }
 
 If ($AutoLogonKiosk) {
@@ -503,15 +511,16 @@ Else {
     }
 }
 
-If($ConfigureAutomaticMaintenance) {
+If ($ConfigureAutomaticMaintenance) {
     # Configure Automatic Maintenance settings via Local Group Policy
     $sourceFile = Join-Path -Path $DirGPO -ChildPath 'AutomaticMaintenance.txt'
     $outFile = Join-Path -Path "$env:SystemRoot\SystemTemp" -ChildPath 'AutomaticMaintenance.txt'
     
-    If($MaintenanceRandomDelay -eq 0) {
+    If ($MaintenanceRandomDelay -eq 0) {
         # No random delay - just replace activation boundary
         (Get-Content -Path $SourceFile).Replace('<ActivationBoundary>', $MaintenanceActivationTimeISO) | Out-File $OutFile
-    } Else {
+    }
+    Else {
         # Include random delay - replace both values and add randomized setting
         $content = (Get-Content -Path $SourceFile).Replace('<ActivationBoundary>', $MaintenanceActivationTimeISO).Replace('<RandomDelay>', $MaintenanceRandomDelayPT)
         $content += @(
@@ -528,7 +537,7 @@ If($ConfigureAutomaticMaintenance) {
     Remove-Item -Path $outFile -Force -ErrorAction SilentlyContinue
 }
 
-If($SetPowerPolicies) {
+If ($SetPowerPolicies) {
     # Configure Power Settings via Local Group Policy
     $sourceFile = Join-Path -Path $DirGPO -ChildPath 'PowerSettings.txt'
     $outFile = Join-Path -Path "$env:SystemRoot\SystemTemp" -ChildPath 'PowerSettings.txt'
