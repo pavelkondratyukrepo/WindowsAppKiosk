@@ -211,6 +211,7 @@ $EventLog = 'Windows-App-Kiosk'
 $EventSource = 'ConfigScript'
 # Find LTSC OS (and Windows IoT Enterprise)
 $OS = Get-WmiObject -Class Win32_OperatingSystem
+[string]$FullOSVersion = [string]$OS.Version + '.' (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion").UBR
 # Detect Windows 11
 If ($OS.Name -match 'LTSC') { $LTSC = $true }
 # Source Directories and supporting files
@@ -271,7 +272,7 @@ Starting Windows App Kiosk Configuration Script
 Script Full Name: $($Script:FullName)
 Parameters:
     $($PSBoundParameters | Out-String)
-Running on: $($OS.Caption) version $($OS.Version)
+Running on: $($OS.Caption) version $FullOSVersion
 "@
 Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 1 -Message $message
 
