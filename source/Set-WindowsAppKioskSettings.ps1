@@ -461,7 +461,7 @@ if ($AutoLogonKiosk) {
 #region Local GPO Settings
 
 if ($WindowsAppShell) {
-    $null = cmd /c lgpo.exe /t "$DirGPO\DisablePrivacyExperiencer.txt" '2>&1'
+    $null = cmd /c lgpo.exe /t "$DirGPO\DisablePrivacyExperience.txt" '2>&1'
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled the First Logon Privacy Experience via the Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
     $null = cmd /c lgpo.exe /t "$DirGPO\ShellLauncher-DisableTaskMgr.txt" '2>&1'
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Disabled Task Manager via Local Group Policy Object.`nlgpo.exe Exit Code: [$LastExitCode]"
