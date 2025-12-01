@@ -125,20 +125,22 @@ The table below describes each parameter and any requirements or usage informati
 
 | Parameter Name   | Type   | Description | Notes/Requirements |
 |:-----------------|:------:|:------------|:-------------------|
-| `AutoLogonKiosk` | Switch | Determines if autologon is enabled through the Assigned Access configuration. | When configured, Windows will automatically create a new user, 'KioskUser0', which will not have a password and be configured to automatically logon when Windows starts. |
+| `AutoLogonKiosk` | Switch | Determines if autologon is enabled through the Assigned Access configuration. | When configured, Windows will automatically create a new user, 'KioskUser0', which will <u>not</u> have a password and be configured to automatically logon when Windows starts. |
 | `WindowsAppShell` | Switch | Determines whether to configure shell launcher kiosk mode with Windows App as the only available application. | When not specified, multi-app kiosk mode is used with a restricted Start menu. |
-| `WindowsAppAutoLogoffConfig` | String | Determines the automatic logoff configuration for the Windows App when AutoLogonKiosk is used. | Possible values: 'Disabled', 'ResetAppOnCloseOnly', 'ResetAppAfterConnection', 'ResetAppOnCloseOrIdle'. |
-| `WindowsAppAutoLogoffTimeInterval` | Int | Determines the interval in minutes at which Windows App checks for OS inactivity. | Used with 'ResetAppOnCloseOrIdle' configuration. Default is 15 minutes. |
-| `InstallWindowsApp` | Switch | Determines if the latest Windows App is automatically downloaded and provisioned on the system prior to configuration. | Requires internet access to (https://go.microsoft.com/fwlink/?linkid=2262633) and the url to which it redirects. Alternatively, download the MSIX file from this link and place it in the root of the [source/WindowsApp/Apps/WindowsApp](source/WindowsApp/Apps/WindowsApp) folder |
-| `SharedPC` | Switch | Determines if the computer is setup as a shared PC with automatic profile cleanup after logoff. | Only valid for direct logon mode (AutoLogonKiosk switch is not used). |
-| `ShowSettings` | Switch | Determines if the Settings App appears in the restricted interface, limited to display and audio settings. | Only valid when WindowsAppShell is not specified. |
-| `LockScreenAfterSeconds` | Int | Determines the number of seconds of idle time before the lock screen is displayed. | Only valid when AutoLogonKiosk is not used. |
-| `SmartCardRemovalAction` | String | Determines what occurs when the smart card used for authentication is removed. | Possible values: 'Lock', 'Logoff'. Cannot be used when AutoLogonKiosk is true. |
-| `ConfigureAutomaticMaintenance` | Switch | Determines if Windows automatic maintenance settings are configured via Local Group Policy. | When enabled, maintenance tasks will be active the time you specify with the `MaintenanceActivationTime` parameter with an optional random delay specified by the `MaintenanceRandomDelay` parameter. [^3] Can be used with any parameter set. |
-| `MaintenanceActivationTime` | String | Specifies the time of day when automatic maintenance should begin in HH:mm:ss format. | Example: "02:00:00" for 2:00 AM. Converted to ISO 8601 format internally. Default is "00:00:00" (midnight). [^3] |
-| `MaintenanceRandomDelay` | Int | Specifies the maximum random delay in hours added to the maintenance activation time. | Valid values are 1-6 hours. Prevents multiple systems from running maintenance simultaneously. Default is 2 hours. [^3] |
-| `SetPowerPolicies` | Switch | Determines if the Shared PC power management policies are configured via Local Group Policy for shared PC scenarios. | Configures power buttons, sleep settings, energy saver, disables hibernation, and optimizes power behavior for shared environments. [^4] |
-| `SleepAfterSeconds` | Int | Specifies the number of seconds of inactivity before the system automatically goes to sleep. | Works with SetPowerPolicies to manage power consumption. Default is 3600 seconds (1 hour). Set to 0 to Disable Sleep Timeout. [^5] |
+| `WindowsAppAutoLogoffConfig` | String | Determines the automatic logoff configuration for the Windows App when AutoLogonKiosk is used. | Possible values: 'Disabled', 'ResetAppOnCloseOnly', 'ResetAppAfterConnection', 'ResetAppOnCloseOrIdle'. Required when AutoLogonKiosk is specified. |
+| `WindowsAppAutoLogoffTimeInterval` | Int | Determines the interval in minutes at which Windows App checks for OS inactivity. | Required when WindowsAppAutoLogoffConfig is 'ResetAppOnCloseOrIdle'. |
+| `InstallWindowsApp` | Switch | Determines if the latest Windows App is automatically downloaded and provisioned on the system prior to configuration. | Requires internet access to download the latest version. |
+| `SharedPC` | Switch | Determines if the computer is setup as a shared PC with automatic profile cleanup after logoff. | Only valid for direct logon mode (i.e., The `AutoLogonKiosk` switch is not used). |
+| `ShowSettings` | Switch | Determines if the Settings App appears in the restricted interface, limited to display and audio settings. | Only valid when `WindowsAppShell` is not specified. |
+| `IdleLockTimeoutMinutes` | Int | Determines the number of minutes of idle time before the lock screen is displayed. | Only valid when `AutoLogonKiosk` is not used. Must be at least 15 minutes less than other idle timeout parameters when used together. Valid range: 5-60 minutes. |
+| `IdleLogoffTimeoutMinutes` | Int | Determines the number of minutes of user inactivity before an automatic logoff is triggered. | Creates a scheduled task to monitor user activity. Must be at least 15 minutes greater than `IdleLockTimeoutMinutes` and 15 minutes less than `IdleSleepTimeoutMinutes` when used together. Valid range: 5-1440 minutes. |
+| `SmartCardRemovalAction` | String | Determines what occurs when the smart card used for authentication is removed. | Possible values: 'Lock', 'Logoff'. Cannot be used when `AutoLogonKiosk` is true. |
+| `ConfigureAutomaticMaintenance` | Switch | Determines if Windows automatic maintenance settings are configured via Local Group Policy. | When enabled, maintenance tasks will run at the specified time with optional random delay. [^3] |
+| `MaintenanceActivationTime` | String | Specifies the time of day when automatic maintenance should begin in HH:mm:ss format. | Example: "02:00:00" for 2:00 AM. Default is "00:00:00" (midnight). [^3] |
+| `MaintenanceRandomDelay` | Int | Specifies the maximum random delay in hours added to the maintenance activation time. | Valid values are 0-6 hours. Prevents multiple systems from running maintenance simultaneously. Default is 2 hours. [^3] |
+| `SetPowerPolicies` | Switch | Determines if power management policies are configured via Local Group Policy for shared PC scenarios. | Configures power buttons, sleep settings, energy saver, disables hibernation. Requires IdleSleepTimeoutMinutes parameter. [^4] |
+| `IdleSleepTimeoutMinutes` | Int | Determines the number of minutes of user inactivity before the system automatically goes to sleep. | Required when `SetPowerPolicies` is used. Must be at least 15 minutes greater than other idle timeout parameters when used together. Valid range: 30-1440 minutes. [^5] |
+| `Reinstall` | Switch | Allows the script to be re-run on a system that has already been configured. | Triggers removal of existing kiosk settings before applying new configuration. |
 | `Version` | Version | Writes this value to HKLM:\SOFTWARE\Kiosk\version registry key. | Allows tracking of the installed version using configuration management software. Default is '1.0.0'. |
 
 ### Manual Installation
@@ -176,16 +178,16 @@ The table below describes each parameter and any requirements or usage informati
       .\Set-WindowsAppKioskSettings.ps1 -ShowSettings
       ```
 
-    - **Windows App Shell Kiosk with AutoLogon**
+    - **Windows App Shell Kiosk with AutoLogon and Idle Timeout**
 
       ``` powershell
-      .\Set-WindowsAppKioskSettings.ps1 -WindowsAppShell -AutoLogonKiosk -WindowsAppAutoLogoffConfig 'ResetAppOnCloseOrIdle' -WindowsAppAutoLogoffTimeInterval 15
+      .\Set-WindowsAppKioskSettings.ps1 -WindowsAppShell -AutoLogonKiosk -WindowsAppAutoLogoffConfig 'ResetAppOnCloseOrIdle' -WindowsAppAutoLogoffTimeInterval 30
       ```
 
     - **Multi-App Kiosk with AutoLogon and App Reset on Close**
 
       ``` powershell
-      .\Set-WindowsAppKioskSettings.ps1 -AutoLogonKiosk -WindowsAppAutoLogoffConfig 'ResetAppOnCloseOnly' -WindowsAppAutoLogoffTimeInterval 10
+      .\Set-WindowsAppKioskSettings.ps1 -AutoLogonKiosk -WindowsAppAutoLogoffConfig 'ResetAppOnCloseOnly'
       ```
 
     - **Shared PC Configuration with Smart Card Support**
@@ -197,13 +199,13 @@ The table below describes each parameter and any requirements or usage informati
     - **Install Windows App and Configure Kiosk**
 
       ``` powershell
-      .\Set-WindowsAppKioskSettings.ps1 -InstallWindowsApp -WindowsAppShell -AutoLogonKiosk -WindowsAppAutoLogoffConfig 'ResetAppAfterConnection' -WindowsAppAutoLogoffTimeInterval 5
+      .\Set-WindowsAppKioskSettings.ps1 -InstallWindowsApp -WindowsAppShell -AutoLogonKiosk -WindowsAppAutoLogoffConfig 'ResetAppAfterConnection'
       ```
 
     - **Lock Screen on Idle**
 
       ``` powershell
-      .\Set-WindowsAppKioskSettings.ps1 -LockScreenAfterSeconds 900 -ShowSettings
+      .\Set-WindowsAppKioskSettings.ps1 -IdleLockTimeoutMinutes 15 -ShowSettings
       ```
 
 ### Microsoft Endpoint Manager (Intune) Deployment

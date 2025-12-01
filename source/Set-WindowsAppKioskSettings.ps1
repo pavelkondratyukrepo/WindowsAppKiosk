@@ -1,30 +1,31 @@
 <# 
 .SYNOPSIS
-    This script creates a custom Windows App (Microsoft Remote Desktop) kiosk configuration designed to only allow the use of the Windows App.
-    It uses a combination of Assigned Access policies, multi-local group policy settings, provisioning packages, and registry edits to complete 
-    the configuration. There are basically four major configuration scenarios:
+    This script creates a custom Windows App kiosk configuration designed to only allow the use of the Windows App.
+    It uses a combination of Assigned Access policies, local group policy settings, provisioning packages, and registry edits to complete 
+    the configuration. There are four major configuration scenarios:
 
-    * Single-app kiosk mode with Windows App as the dedicated application
-    * Single-app kiosk mode with Windows App as the dedicated application and autologon
+    * Shell Launcher kiosk mode with Windows App as the dedicated application
+    * Shell Launcher kiosk mode with Windows App as the dedicated application and automatic logon
     * Multi-app kiosk mode with restricted Start menu and taskbar access
-    * Multi-app kiosk mode with restricted Start menu and taskbar access with autologon
+    * Multi-app kiosk mode with restricted Start menu and taskbar access with automatic logon
 
-    These options are controlled by the combination of the SingleAppKiosk and AutoLogonKiosk switch parameters.
+    These options are controlled by the combination of the WindowsAppShell and AutoLogonKiosk switch parameters.
     
-    When the SingleAppKiosk switch parameter is not used, you can utilize the ShowSettings switch parameter to allow access to the Settings app.
+    When the WindowsAppShell switch parameter is not used, you can utilize the ShowSettings switch parameter to allow access to the Settings app.
     
     Additionally, you can choose to:
 
     * Provision the latest Windows App directly from the Microsoft download site so that it is installed for every user.
-    * Configure automatic logoff behavior for the Windows App in kiosk scenarios.
-    * When not configured as an autologon kiosk:
+    * Configure automatic logoff behavior for the Windows App in automatic logon kiosk scenarios.
+    * When not configured as an automatic logon kiosk:
+        * Configure idle timeout behavior with automatic screen lock, user logoff, and system sleep escalation.
         * Monitor for smart card removals and perform lock or logoff actions.
         * Enable SharedPC mode for automatic profile cleanup.
 
 .DESCRIPTION 
     This script completes a series of configuration tasks based on the parameters chosen. These tasks can include:
 
-    * Assigned Access configuration for single-app or multi-app kiosk modes
+    * Assigned Access configuration for shell launcher or multi-app kiosk modes
     * Windows App provisioning from the Microsoft download site or via a local source file.
     * Automatic logoff and app reset configuration for Windows App
     * Multi-Local Group Policy configuration to limit interface elements and restrict access
@@ -35,13 +36,18 @@
     * Registry modifications to enforce kiosk behavior and settings
 
 .NOTES 
-    The script will automatically remove older configurations by running 'Remove-KioskSettings.ps1' during the install process.    
+    Author: Shawn Meyer, Microsoft
+    Creation Date: 02/15/2023
+    Last Modified: 12/1/2025
+    Version: 2025.12.01.1
+    
+    The script will automatically remove older configurations by using -Reinstall which will run 'Remove-KioskSettings.ps1' during the install process.
 
 .COMPONENT 
     No PowerShell modules required.
 
 .LINK 
-
+    https://www.github.com/azure/WindowsAppKiosk
 
 .PARAMETER AutoLogonKiosk
 This switch parameter determines If autologon is enabled through the Assigned Access configuration. The Assigned Access feature will automatically
@@ -49,10 +55,10 @@ create a new user - 'KioskUser0' - which will not have a password and be configu
 
 .PARAMETER WindowsAppAutoLogoffConfig
 This string parameter determines the automatic logoff configuration for the Windows App when the AutoLogonKiosk switch parameter is used. The possible values are:
-* Disabled - Disables automatic sign-out and app data reset for the Windows App. (Not RECOMMENDED for Kiosk scenarios)
-* ResetAppOnCloseOnly - Sign all users out of Windows App and reset app data when the user closes the app.
-* ResetAppAfterConnection - Sign all users out of Windows App and reset app data when a successful connection to an Azure Virtual Desktop session host or Windows 365 Cloud PC is made.
-* ResetAppOnCloseOrIdle - Sign all users out of Windows App and reset app data when the operating system is idle for the specified time interval in minutes or the user closes the app.
+- Disabled - Disables automatic sign-out and app data reset for the Windows App. (Not RECOMMENDED for Kiosk scenarios)
+- ResetAppOnCloseOnly - Sign all users out of Windows App and reset app data when the user closes the app.
+- ResetAppAfterConnection - Sign all users out of Windows App and reset app data when a successful connection to an Azure Virtual Desktop session host or Windows 365 Cloud PC is made.
+- ResetAppOnCloseOrIdle - Sign all users out of Windows App and reset app data when the operating system is idle for the specified time interval in minutes or the user closes the app.
 
 .PARAMETER WindowsAppAutoLogoffTimeInterval
 This integer value determines the interval at which Windows App checks the Windows OS for inactivity.
@@ -62,19 +68,17 @@ For example, if set to 5, the app will poll the OS for inactivity every 5 minute
 This switch parameter determines whether the Windows Shell is replaced by the Windows App or remains the default 'explorer.exe'.
 
 .PARAMETER InstallWindowsApp
-This switch parameter determines If the latest Remote Desktop client for Windows is automatically downloaded from the Internet and installed
-on the system prior to configuration.
+This switch parameter determines If the latest Remote Desktop client for Windows is automatically downloaded from the Internet and installed on the system prior to configuration.
 
 .PARAMETER SharedPC
-This switch parameter determines If the computer is setup as a shared PC. The account management process is enabled and all user profiles are automatically
-deleted on logoff.
+This switch parameter determines If the computer is setup as a shared PC. The account management process is enabled and all user profiles are automatically deleted on logoff.
 
 .PARAMETER ShowSettings
 This switch parameter determines If the Settings App appears on the start menu. The settings app and control panel are restricted to the applets/pages specified in the nonadmins-ShowSettings.txt file. If this value is not set,
 then the Settings app and Control Panel are not displayed or accessible.
 
-.PARAMETER LockScreenAfterSeconds
-This integer value determines the number of seconds of idle time before the lock screen is displayed. This parameter is only valid when the AutoLogonKiosk switch parameter is not used.
+.PARAMETER IdleLockTimeoutMinutes
+This integer value determines the number of minutes of idle time before the lock screen is displayed. This parameter is only valid when the AutoLogonKiosk switch parameter is not used. When used with other idle timeout parameters, this must be at least 15 minutes less than IdleLogoffTimeoutMinutes and IdleSleepTimeoutMinutes.
 
 .PARAMETER SmartCardRemovalAction   
 This string parameter determines what occurs when the smart card that was used to authenticate to the operating system is removed from the system. The possible values are 'Lock' or 'Logoff'.
@@ -90,10 +94,13 @@ This string parameter specifies the time of day when automatic maintenance shoul
 This integer parameter specifies the maximum random delay in hours that can be added to the maintenance activation time to prevent multiple systems from running maintenance simultaneously. Valid values are 1-6 hours. The value is converted to ISO 8601 duration format (PT#H) internally. Default is 2 hours.
 
 .PARAMETER SetPowerPolicies
-This switch parameter determines if power management policies are configured via Local Group Policy to optimize behavior for shared PC scenarios. When enabled, configures power button, sleep button, and lid switch actions to sleep, enables energy saver settings, disables hibernation, and enables standby states while turning off hybrid sleep for both battery and plugged-in scenarios.
+This switch parameter determines if power management policies are configured via Local Group Policy to optimize behavior for shared PC scenarios. When enabled, configures power button, sleep button, and lid switch actions to sleep, enables energy saver settings, disables hibernation, and enables standby states while turning off hybrid sleep for both battery and plugged-in scenarios. Requires IdleSleepTimeoutMinutes parameter to be specified.
 
-.PARAMETER SleepAfterSeconds
-This integer parameter specifies the number of seconds of inactivity before the system automatically goes to sleep. This setting works in conjunction with SetPowerPolicies to manage power consumption in shared PC environments. Default is 3600 seconds (1 hour).
+.PARAMETER IdleSleepTimeoutMinutes
+This integer parameter specifies the number of minutes of user inactivity before the system automatically goes to sleep. This parameter is required when SetPowerPolicies is used and works in conjunction with it to manage power consumption in shared PC environments. When used with other idle timeout parameters, this must be at least 15 minutes greater than both IdleLockTimeoutMinutes and IdleLogoffTimeoutMinutes to ensure proper escalation sequence (lock → logoff → sleep).
+
+.PARAMETER IdleLogoffTimeoutMinutes
+This integer parameter specifies the number of minutes of user inactivity before an automatic logoff is triggered. Valid range is 1-1440 minutes (1 day). When specified, a scheduled task is created to monitor user activity and automatically log off users after the specified idle time. When used with other idle timeout parameters, this must be at least 15 minutes greater than IdleLockTimeoutMinutes and at least 15 minutes less than IdleSleepTimeoutMinutes.
 
 .PARAMETER Reinstall
 This switch parameter allows the script to be re-run on a system that has already been configured. It triggers the removal of existing kiosk settings before applying the new configuration.
@@ -120,8 +127,14 @@ param (
     [int]$WindowsAppAutoLogoffTimeInterval,
 
     [Parameter(ParameterSetName = 'DirectLogonShellLauncher')]
-    [Parameter(ParameterSetName = 'DirectLogonMultiAppKiosk')]    
-    [int]$LockScreenAfterSeconds,
+    [Parameter(ParameterSetName = 'DirectLogonMultiAppKiosk')]
+    [ValidateRange(5, 60)]    
+    [int]$IdleLockTimeoutMinutes,
+    
+    [Parameter(ParameterSetName = 'DirectLogonShellLauncher')]
+    [Parameter(ParameterSetName = 'DirectLogonMultiAppKiosk')]  
+    [ValidateRange(5, 1440)]
+    [int]$IdleLogoffTimeoutMinutes,
 
     [Parameter(ParameterSetName = 'DirectLogonShellLauncher')]
     [Parameter(ParameterSetName = 'DirectLogonMultiAppKiosk')]
@@ -164,7 +177,8 @@ param (
     [switch]$SetPowerPolicies,
 
     [Parameter()]
-    [int]$SleepAfterSeconds = 3600,
+    [ValidateRange(30, 1440)]
+    [int]$IdleSleepTimeoutMinutes,
 
     [Parameter()]
     [switch]$Reinstall,
@@ -174,6 +188,30 @@ param (
 
 If ($WindowsAppAutoLogoffConfig -eq 'ResetAppOnCloseOrIdle' -and $null -eq $WindowsAppAutoLogoffTimeInterval) {
     Throw "You must specify a value for 'WindowsAppAutoLogoffTimeInterval' when 'WindowsAppAutoLogoffConfig' = 'ResetAppOnCloseOrIdle'"
+} 
+
+If ($SetPowerPolicies -and $null -eq $IdleSleepTimeoutMinutes) {
+    Throw "You must specify a value for 'IdleSleepTimeoutMinutes' when 'SetPowerPolicies' is used"
+} 
+
+# Validate idle timeout parameter ordering: IdleLockTimeout < IdleLogoffTimeout < IdleSleepTimeout
+# Ensure minimum 15-minute gap between each timeout level
+If ($IdleLockTimeoutMinutes -and $IdleLogoffTimeoutMinutes) {
+    If ($IdleLogoffTimeoutMinutes -le ($IdleLockTimeoutMinutes + 15)) {
+        Throw "IdleLogoffTimeoutMinutes ($IdleLogoffTimeoutMinutes) must be at least 15 minutes greater than IdleLockTimeoutMinutes ($IdleLockTimeoutMinutes). Minimum required: $($IdleLockTimeoutMinutes + 15)"
+    }
+}
+
+If ($IdleLogoffTimeoutMinutes -and $IdleSleepTimeoutMinutes) {
+    If ($IdleSleepTimeoutMinutes -le ($IdleLogoffTimeoutMinutes + 15)) {
+        Throw "IdleSleepTimeoutMinutes ($IdleSleepTimeoutMinutes) must be at least 15 minutes greater than IdleLogoffTimeoutMinutes ($IdleLogoffTimeoutMinutes). Minimum required: $($IdleLogoffTimeoutMinutes + 15)"
+    }
+}
+
+If ($IdleLockTimeoutMinutes -and $IdleSleepTimeoutMinutes) {
+    If ($IdleSleepTimeoutMinutes -le ($IdleLockTimeoutMinutes + 15)) {
+        Throw "IdleSleepTimeoutMinutes ($IdleSleepTimeoutMinutes) must be at least 15 minutes greater than IdleLockTimeoutMinutes ($IdleLockTimeoutMinutes). Minimum required: $($IdleLockTimeoutMinutes + 15)"
+    }
 } 
 
 # Restart in 64-Bit PowerShell if not already running in 64-bit mode
@@ -515,13 +553,13 @@ Else {
         $null = cmd /c lgpo /s "$DirGPO\SmartCardLogOffWorkstation.inf" '2>&1'
         Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Set 'Interactive logon: Smart Card Removal behavior' to 'Force Logoff Workstation' via Local Group Policy Computer Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     }
-    If ($LockScreenAfterSeconds) {
+    If ($IdleLockTimeoutMinutes) {
         # Will lock the system via the inactivity timeout built-in policy which locks the screen after inactivity.
         $sourceFile = Join-Path -Path $DirGPO -ChildPath 'MachineInactivityTimeout.inf'
         $outFile = Join-Path -Path "$env:SystemRoot\SystemTemp" -ChildPath 'MachineInactivityTimeout.inf'
-        (Get-Content -Path $SourceFile).Replace('<Seconds>', ($LockScreenAfterSeconds)) | Out-File $OutFile
+        (Get-Content -Path $SourceFile).Replace('<Seconds>', ($IdleLockTimeoutMinutes * 60)) | Out-File $OutFile
         $null = cmd /c lgpo /s "$outFile" '2>&1'
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Set 'Interactive logon: Machine inactivity limit' to '$LockScreenAfterSeconds seconds' via Local Group Policy Computer Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Set 'Interactive logon: Machine inactivity limit' to '$($IdleLockTimeoutMinutes * 60) seconds' via Local Group Policy Computer Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
         Remove-Item -Path $outFile -Force -ErrorAction SilentlyContinue
     }
 }
@@ -561,7 +599,7 @@ If ($SetPowerPolicies) {
     # Configure Power Settings via Local Group Policy
     $sourceFile = Join-Path -Path $DirGPO -ChildPath 'PowerSettings.txt'
     $outFile = Join-Path -Path "$env:SystemRoot\SystemTemp" -ChildPath 'PowerSettings.txt'
-    (Get-Content -Path $SourceFile).Replace('<SleepTimeOut>', $SleepAfterSeconds) | Out-File $OutFile
+    (Get-Content -Path $SourceFile).Replace('<SleepTimeOut>', ($IdleSleepTimeoutMinutes * 60)) | Out-File $OutFile
     $null = cmd /c lgpo /s "$outFile" '2>&1'
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Configured Power Settings via Local Group Policy Computer Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     Remove-Item -Path $outFile -Force -ErrorAction SilentlyContinue
@@ -750,7 +788,7 @@ if ($WindowsAppShell) {
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventID 125 -Message "Enabling Keyboard filter."
     Enable-WindowsOptionalFeature -Online -FeatureName Client-KeyboardFilter -All -NoRestart
     # Configure Keyboard Filter after reboot
-    $TaskName = "(AVD Client) - Configure Keyboard Filter"
+    $TaskName = "Windows-App-Kiosk - Configure Keyboard Filter"
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 126 -Message "Creating Scheduled Task: '$TaskName'."
     $TaskScriptEventSource = 'Keyboard Filter Configuration'
     $TaskDescription = "Configures the Keyboard Filter"
@@ -771,6 +809,33 @@ if ($WindowsAppShell) {
 }
 
 #endregion Keyboard Filter
+
+#region Idle Logoff User Task
+
+# Create User-based Idle Logoff Task if IdleLogoffTimeoutMinutes is specified
+If ($IdleLogoffTimeoutMinutes) {
+    $TaskName = 'Windows-App-Kiosk - User Idle Logoff'
+    $TaskDescription = "Automatically logs off user after $IdleLogoffTimeoutMinutes minutes of system inactivity"
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 126 -Message "Creating User Idle Logoff Task: '$TaskName' with $IdleLogoffTimeoutMinutes minute idle timeout." 
+    # Create action to log off the current user
+    $TaskAction = New-ScheduledTaskAction -Execute 'shutdown.exe' -Argument '/l /f'
+    $TaskTrigger = New-ScheduledTaskTrigger -AtLogOn
+    # Configure the idle condition using task settings
+    $TaskSettings = New-ScheduledTaskSettingsSet -DisallowDemandStart -DontStopOnIdleEnd -Hidden -RunOnlyIfIdle -IdleWaitTimeout (New-TimeSpan -Days 365) -IdleDuration (New-TimeSpan -Minutes $IdleLogoffTimeoutMinutes) -MultipleInstances Parallel
+    # Run as the logged-in user with limited privileges
+    $TaskPrincipal = New-ScheduledTaskPrincipal -GroupId 'BuiltIn\Users' -RunLevel Limited    
+    # Register the task
+    Register-ScheduledTask -TaskName $TaskName -Description $TaskDescription -Action $TaskAction -Settings $TaskSettings -Principal $TaskPrincipal -Trigger $TaskTrigger -Force
+    
+    If (Get-ScheduledTask | Where-Object { $_.TaskName -eq "$TaskName" }) {
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 119 -Message "User Idle Logoff Task created successfully using native Task Scheduler idle detection."
+    }
+    Else {
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Error -EventId 120 -Message "User Idle Logoff Task not created."
+    }
+}
+
+#endregion Idle Logoff User Task
 
 Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 150 -Message "Updating Group Policy"
 $GPUpdate = Start-Process -FilePath 'GPUpdate' -ArgumentList '/force' -Wait -PassThru
