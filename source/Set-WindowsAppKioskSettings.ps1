@@ -601,7 +601,7 @@ If ($SetPowerPolicies) {
     $outFile = Join-Path -Path "$env:SystemRoot\SystemTemp" -ChildPath 'PowerSettings.txt'
     (Get-Content -Path $SourceFile).Replace('<SleepTimeOut>', ($IdleSleepTimeoutMinutes * 60)) | Out-File $OutFile
     $null = cmd /c lgpo /s "$outFile" '2>&1'
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Configured Power Settings via Local Group Policy Computer Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 80 -Message "Configured Power Settings with idle sleep timeout = $IdleSleepTimeoutMinutes minutes via Local Group Policy Computer Settings.`nlgpo.exe Exit Code: [$LastExitCode]"
     Remove-Item -Path $outFile -Force -ErrorAction SilentlyContinue
 }
 
