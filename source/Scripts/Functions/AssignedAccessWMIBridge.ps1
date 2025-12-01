@@ -6,7 +6,7 @@ function Get-AssignedAccessCspBridgeWmi {
 
 function Set-AssignedAccessShellLauncher {
     param (
-        [Parameter(Mandatory=$True)]
+        [Parameter(Mandatory = $True)]
         [String] $FilePath
     )
 
@@ -15,9 +15,6 @@ function Set-AssignedAccessShellLauncher {
     $AssignedAccessCsp = Get-AssignedAccessCspBridgeWmi
     $AssignedAccessCsp.ShellLauncher = $EscapedXml
     Set-CimInstance -CimInstance $AssignedAccessCsp
-    
-    # get a new instance and print the value
-    (Get-AssignedAccessCspBridgeWmi).ShellLauncher
 }
 
 function Clear-AssignedAccessShellLauncher {
@@ -36,7 +33,7 @@ function Get-AssignedAccessConfiguration {
 
 function Set-AssignedAccessConfiguration {
     param (
-        [Parameter(Mandatory=$True)]
+        [Parameter(Mandatory = $True)]
         [string] $FilePath
     )
 
@@ -45,11 +42,36 @@ function Set-AssignedAccessConfiguration {
     $EncodedXml = [System.Net.WebUtility]::HtmlEncode($Xml)
     $AssignedAccessCsp.Configuration = $EncodedXml
     Set-CimInstance -CimInstance $AssignedAccessCsp
-    (Get-AssignedAccessCspBridgeWmi).Configuration
 }
 
 function Clear-AssignedAccessConfiguration {
     $AssignedAccessCsp = Get-AssignedAccessCspBridgeWmi
     $AssignedAccessCsp.Configuration = $NULL
     Set-CimInstance -CimInstance $AssignedAccessCsp
+}
+
+Function Format-OutputXml {
+    param (
+        [Parameter(Mandatory = $True)]
+        [string] $Configuration
+    )
+    try {
+        $XmlDoc = [xml]$Configuration
+        $StringWriter = New-Object System.IO.StringWriter
+        $XmlSettings = New-Object System.Xml.XmlWriterSettings
+        $XmlSettings.Indent = $true
+        $XmlSettings.IndentChars = "  "
+        $XmlSettings.NewLineChars = "`r`n"
+        $XmlSettings.NewLineHandling = [System.Xml.NewLineHandling]::Replace
+        $XmlSettings.OmitXmlDeclaration = $false
+        $XmlSettings.ConformanceLevel = [System.Xml.ConformanceLevel]::Document        
+        $XmlWriter = [System.Xml.XmlWriter]::Create($StringWriter, $XmlSettings)
+        $XmlDoc.Save($XmlWriter)
+        $XmlWriter.Flush()
+        $StringWriter.ToString()
+    }
+    catch {
+        # Fallback if XML formatting fails
+        $Configuration | Out-String
+    }
 }

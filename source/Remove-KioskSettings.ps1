@@ -183,7 +183,7 @@ If (Test-Path -Path $DirKiosk) {
 }
 
 # Remove Scheduled Tasks
-$ScheduledTasks = Get-ScheduledTask | Where-Object { $_.TaskName -like '(AVD Client)*' }
+$ScheduledTasks = Get-ScheduledTask | Where-Object { $_.TaskName -like 'Windows-App-Kiosk*' }
 If ($ScheduledTasks) {
     $Removed = $true
     Write-Log -EventLog $EventLog -EventSource $EventSource -EventId 19 -EntryType Information -Message "Removing Scheduled Tasks."
