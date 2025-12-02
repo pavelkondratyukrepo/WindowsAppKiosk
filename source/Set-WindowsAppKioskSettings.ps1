@@ -197,19 +197,19 @@ If ($SetPowerPolicies -and $null -eq $IdleSleepTimeoutMinutes) {
 # Validate idle timeout parameter ordering: IdleLockTimeout < IdleLogoffTimeout < IdleSleepTimeout
 # Ensure minimum 15-minute gap between each timeout level
 If ($IdleLockTimeoutMinutes -and $IdleLogoffTimeoutMinutes) {
-    If ($IdleLogoffTimeoutMinutes -le ($IdleLockTimeoutMinutes + 15)) {
+    If ($IdleLogoffTimeoutMinutes -lt ($IdleLockTimeoutMinutes + 15)) {
         Throw "IdleLogoffTimeoutMinutes ($IdleLogoffTimeoutMinutes) must be at least 15 minutes greater than IdleLockTimeoutMinutes ($IdleLockTimeoutMinutes). Minimum required: $($IdleLockTimeoutMinutes + 15)"
     }
 }
 
 If ($IdleLogoffTimeoutMinutes -and $IdleSleepTimeoutMinutes) {
-    If ($IdleSleepTimeoutMinutes -le ($IdleLogoffTimeoutMinutes + 15)) {
+    If ($IdleSleepTimeoutMinutes -lt ($IdleLogoffTimeoutMinutes + 15)) {
         Throw "IdleSleepTimeoutMinutes ($IdleSleepTimeoutMinutes) must be at least 15 minutes greater than IdleLogoffTimeoutMinutes ($IdleLogoffTimeoutMinutes). Minimum required: $($IdleLogoffTimeoutMinutes + 15)"
     }
 }
 
 If ($IdleLockTimeoutMinutes -and $IdleSleepTimeoutMinutes) {
-    If ($IdleSleepTimeoutMinutes -le ($IdleLockTimeoutMinutes + 15)) {
+    If ($IdleSleepTimeoutMinutes -lt ($IdleLockTimeoutMinutes + 15)) {
         Throw "IdleSleepTimeoutMinutes ($IdleSleepTimeoutMinutes) must be at least 15 minutes greater than IdleLockTimeoutMinutes ($IdleLockTimeoutMinutes). Minimum required: $($IdleLockTimeoutMinutes + 15)"
     }
 } 
