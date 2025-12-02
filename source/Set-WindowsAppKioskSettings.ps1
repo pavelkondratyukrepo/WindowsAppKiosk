@@ -301,9 +301,13 @@ Else {
 
 #region Initialization
 
-New-EventLog -LogName $EventLog -Source $EventSource -ErrorAction SilentlyContinue
-Write-Output "Pausing for 5 seconds to ensure $EventLog | $EventSource log is ready..."
-Start-Sleep -Seconds 5
+If (-not [System.Diagnostics.EventLog]::SourceExists($EventSource) -or -not [System.Diagnostics.EventLog]::Exists($EventLog)) {
+    Write-Verbose "Creating $EventLog | $EventSource log..."
+    New-EventLog -LogName $EventLog -Source $EventSource -ErrorAction SilentlyContinue
+    Do {
+        Start-Sleep -Seconds 1
+    } Until ([System.Diagnostics.EventLog]::SourceExists($EventSource) -and [System.Diagnostics.EventLog]::Exists($EventLog))
+}
 
 $message = @"
 Starting Windows App Kiosk Configuration Script
