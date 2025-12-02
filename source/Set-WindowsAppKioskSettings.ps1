@@ -822,7 +822,7 @@ If ($IdleLogoffTimeoutMinutes) {
     $TaskDescription = "Automatically logs off user after $IdleLogoffTimeoutMinutes minutes of system inactivity"
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 126 -Message "Creating User Idle Logoff Task: '$TaskName' with $IdleLogoffTimeoutMinutes minute idle timeout." 
     # Create action to log off the current user
-    $TaskAction = New-ScheduledTaskAction -Execute 'shutdown.exe' -Argument '/l /f'
+    $TaskAction = New-ScheduledTaskAction -Execute 'logoff.exe'
     $TaskTrigger = New-ScheduledTaskTrigger -AtLogOn
     # Configure the idle condition using task settings
     $TaskSettings = New-ScheduledTaskSettingsSet -DisallowDemandStart -DontStopOnIdleEnd -Hidden -RunOnlyIfIdle -IdleWaitTimeout (New-TimeSpan -Days 365) -IdleDuration (New-TimeSpan -Minutes $IdleLogoffTimeoutMinutes) -MultipleInstances Parallel
