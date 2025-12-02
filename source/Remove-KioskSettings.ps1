@@ -53,9 +53,13 @@ ForEach ($Function in $Functions) {
     . "$($Function.FullName)"
 }
 
-New-EventLog -LogName $EventLog -Source $EventSource -ErrorAction SilentlyContinue
-Write-Output "Pausing for 5 seconds to ensure the $EventLog | $EventSource event log is ready..."
-Start-Sleep -Seconds 5
+If (-not [System.Diagnostics.EventLog]::SourceExists($EventSource) -or -not [System.Diagnostics.EventLog]::Exists($EventLog)) {
+    Write-Verbose "Creating $EventLog | $EventSource log..."
+    New-EventLog -LogName $EventLog -Source $EventSource -ErrorAction SilentlyContinue
+    Do {
+        Start-Sleep -Seconds 1
+    } Until ([System.Diagnostics.EventLog]::SourceExists($EventSource) -and [System.Diagnostics.EventLog]::Exists($EventLog))
+}
 Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 5 -Message "Executing '$Script:FullName'."
 
 #endregion Initialization and Logging
