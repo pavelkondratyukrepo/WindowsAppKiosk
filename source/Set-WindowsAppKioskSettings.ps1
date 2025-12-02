@@ -197,19 +197,19 @@ If ($SetPowerPolicies -and $null -eq $IdleSleepTimeoutMinutes) {
 # Validate idle timeout parameter ordering: IdleLockTimeout < IdleLogoffTimeout < IdleSleepTimeout
 # Ensure minimum 15-minute gap between each timeout level
 If ($IdleLockTimeoutMinutes -and $IdleLogoffTimeoutMinutes) {
-    If ($IdleLogoffTimeoutMinutes -le ($IdleLockTimeoutMinutes + 15)) {
+    If ($IdleLogoffTimeoutMinutes -lt ($IdleLockTimeoutMinutes + 15)) {
         Throw "IdleLogoffTimeoutMinutes ($IdleLogoffTimeoutMinutes) must be at least 15 minutes greater than IdleLockTimeoutMinutes ($IdleLockTimeoutMinutes). Minimum required: $($IdleLockTimeoutMinutes + 15)"
     }
 }
 
 If ($IdleLogoffTimeoutMinutes -and $IdleSleepTimeoutMinutes) {
-    If ($IdleSleepTimeoutMinutes -le ($IdleLogoffTimeoutMinutes + 15)) {
+    If ($IdleSleepTimeoutMinutes -lt ($IdleLogoffTimeoutMinutes + 15)) {
         Throw "IdleSleepTimeoutMinutes ($IdleSleepTimeoutMinutes) must be at least 15 minutes greater than IdleLogoffTimeoutMinutes ($IdleLogoffTimeoutMinutes). Minimum required: $($IdleLogoffTimeoutMinutes + 15)"
     }
 }
 
 If ($IdleLockTimeoutMinutes -and $IdleSleepTimeoutMinutes) {
-    If ($IdleSleepTimeoutMinutes -le ($IdleLockTimeoutMinutes + 15)) {
+    If ($IdleSleepTimeoutMinutes -lt ($IdleLockTimeoutMinutes + 15)) {
         Throw "IdleSleepTimeoutMinutes ($IdleSleepTimeoutMinutes) must be at least 15 minutes greater than IdleLockTimeoutMinutes ($IdleLockTimeoutMinutes). Minimum required: $($IdleLockTimeoutMinutes + 15)"
     }
 } 
@@ -301,9 +301,13 @@ Else {
 
 #region Initialization
 
-New-EventLog -LogName $EventLog -Source $EventSource -ErrorAction SilentlyContinue
-Write-Output "Pausing for 5 seconds to ensure $EventLog | $EventSource log is ready..."
-Start-Sleep -Seconds 5
+If (-not [System.Diagnostics.EventLog]::SourceExists($EventSource) -or -not [System.Diagnostics.EventLog]::Exists($EventLog)) {
+    Write-Verbose "Creating $EventLog | $EventSource log..."
+    New-EventLog -LogName $EventLog -Source $EventSource -ErrorAction SilentlyContinue
+    Do {
+        Start-Sleep -Seconds 1
+    } Until ([System.Diagnostics.EventLog]::SourceExists($EventSource) -and [System.Diagnostics.EventLog]::Exists($EventLog))
+}
 
 $message = @"
 Starting Windows App Kiosk Configuration Script
