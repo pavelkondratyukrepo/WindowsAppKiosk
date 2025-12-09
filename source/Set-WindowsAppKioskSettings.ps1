@@ -830,11 +830,13 @@ If ($IdleLogoffTimeoutMinutes) {
     $TaskName = "Windows-App-Kiosk - Logoff Idle Users"
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 126 -Message "Creating Scheduled Task: '$TaskName'."
     $TaskDescription = "Automatically Logs off any idle users after a set period"
-    $TaskTrigger = New-ScheduledTaskTrigger -AtStartup
+    $TaskTrigger = New-ScheduledTaskTrigger -AtLogon
     $TaskScriptArgs = "-IdleThresholdMinutes $IdleLogoffTimeoutMinutes"
     $TaskAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-executionpolicy bypass -file $TaskScriptFullName $TaskScriptArgs"
     $TaskPrincipal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
-    $TaskSettings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -AllowStartIfOnBatteries
+    # Set ExecutionTimeLimit to 0 (Infinite) so the task doesn't stop after 3 days (default)
+    # Add RestartCount to ensure resilience if the script crashes
+    $TaskSettings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -AllowStartIfOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
     Register-ScheduledTask -TaskName $TaskName -Description $TaskDescription -Action $TaskAction -Settings $TaskSettings -Principal $TaskPrincipal -Trigger $TaskTrigger
     If (Get-ScheduledTask | Where-Object { $_.TaskName -eq "$TaskName" }) {
         Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 119 -Message "Scheduled Task created successfully."
@@ -844,7 +846,6 @@ If ($IdleLogoffTimeoutMinutes) {
         Exit 1618
     }
 }
-
 #endregion Idle Logoff User Task
 
 Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 150 -Message "Updating Group Policy"

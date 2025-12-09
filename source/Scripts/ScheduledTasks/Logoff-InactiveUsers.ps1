@@ -65,39 +65,10 @@ public static class WtsApi
         public WTS_CONNECTSTATE_CLASS State;
     }
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-    public struct WTSINFO
-    {
-        public WTS_CONNECTSTATE_CLASS State;
-        public uint SessionId;
-        public uint IncomingBytes;
-        public uint OutgoingBytes;
-        public uint IncomingFrames;
-        public uint OutgoingFrames;
-        public uint IncomingCompressedBytes;
-        public uint OutgoingCompressedBytes;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-        public string WinStationName;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 17)]
-        public string Domain;
-        
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 21)]
-        public string UserName;
-        
-        public long ConnectTime;
-        public long DisconnectTime;
-        public long LastInputTime;
-        public long LogonTime;
-        public long CurrentTime;
-    }
-
     public enum WTS_INFO_CLASS
     {
         WTSUserName = 5,
         WTSDomainName = 7,
-        WTSIdleTime = 18,
         WTSSessionInfo = 24
     }
 
@@ -145,27 +116,50 @@ function Get-ActiveSessions {
 }
 
 function Get-SessionIdleSeconds([int]$SessionId) {
-    $buf = [IntPtr]::Zero; $bytes = 0
-
-    # Try WTSSessionInfo first
-    if ([WtsApi]::WTSQuerySessionInformation([IntPtr]::Zero, $SessionId, [WtsApi+WTS_INFO_CLASS]::WTSSessionInfo, [ref]$buf, [ref]$bytes)) {
-        try {
-            $info = [System.Runtime.InteropServices.Marshal]::PtrToStructure($buf, [type]'WtsApi+WTSINFO')
+    try {
+        # Use quser to get idle time as WTSAPI LastInputTime can be unreliable for Console sessions
+        $quserOutput = & "$env:SystemRoot\System32\quser.exe" $SessionId 2>&1
+        if ($LASTEXITCODE -ne 0) { return $null }
+        
+        # Parse output
+        # USERNAME              SESSIONNAME        ID  STATE   IDLE TIME  LOGON TIME
+        # shmeyer               console             1  Active      none   12/2/2025 6:56 AM
+        
+        $line = $quserOutput | Select-Object -Last 1
+        if ([string]::IsNullOrWhiteSpace($line)) { return $null }
+        
+        $parts = $line -split '\s+' | Where-Object { $_ -ne '' }
+        $idIndex = $parts.IndexOf("$SessionId")
+        
+        if ($idIndex -ge 0 -and ($idIndex + 2) -lt $parts.Count) {
+            # ID is at $idIndex. State is at $idIndex + 1. IdleTime is at $idIndex + 2.
+            $idleStr = $parts[$idIndex + 2]
             
-            # Calculate idle time: CurrentTime - LastInputTime (in 100-nanosecond intervals)
-            # Convert to seconds: / 10,000,000
-            if ($info.LastInputTime -gt 0) {
-                $idleTicks = $info.CurrentTime - $info.LastInputTime
-                if ($idleTicks -lt 0) { $idleTicks = 0 }
-                return [math]::Round($idleTicks / 10000000)
+            # If no digits, assume "none" or "." (0 idle time)
+            if ($idleStr -notmatch '\d') { return 0 }
+            
+            $days = 0; $hours = 0; $minutes = 0
+            
+            # Parse formats: 1+02:30 (d+h:m), 2:30 (h:m), 45 (m)
+            if ($idleStr -match '^(\d+)\+(\d{1,2}):(\d{2})$') {
+                $days = [int]$matches[1]
+                $hours = [int]$matches[2]
+                $minutes = [int]$matches[3]
             }
-            return 0
-        } finally {
-            [WtsApi]::WTSFreeMemory($buf)
+            elseif ($idleStr -match '^(\d{1,2}):(\d{2})$') {
+                $hours = [int]$matches[1]
+                $minutes = [int]$matches[2]
+            }
+            elseif ($idleStr -match '^(\d+)$') {
+                $minutes = [int]$matches[1]
+            }
+            
+            return ($days * 86400) + ($hours * 3600) + ($minutes * 60)
         }
+    } catch {
+        Write-Warning "Failed to query session idle time: $_"
     }
-
-    return $null
+    return 0
 }
 
 function Get-SessionUser([int]$SessionId) {
