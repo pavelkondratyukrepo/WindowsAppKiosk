@@ -65,31 +65,32 @@ public static class WtsApi
         public WTS_CONNECTSTATE_CLASS State;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
     public struct WTSINFO
     {
         public WTS_CONNECTSTATE_CLASS State;
-        public int SessionId;
-        public int IncomingBytes;
-        public int OutgoingBytes;
-        public int IncomingFrames;
-        public int OutgoingFrames;
-        public int IncomingCompressedBytes;
-        public int OutgoingCompressedBytes;
-        public int WinStationNameLength;
+        public uint SessionId;
+        public uint IncomingBytes;
+        public uint OutgoingBytes;
+        public uint IncomingFrames;
+        public uint OutgoingFrames;
+        public uint IncomingCompressedBytes;
+        public uint OutgoingCompressedBytes;
+        
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
         public string WinStationName;
-        public int DomainLength;
+        
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 17)]
         public string Domain;
-        public int UserNameLength;
+        
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 21)]
         public string UserName;
-        public int ConnectTime;
-        public int DisconnectTime;
-        public int LastInputTime;   // seconds since last input
-        public int LogonTime;
-        public int CurrentTime;
+        
+        public long ConnectTime;
+        public long DisconnectTime;
+        public long LastInputTime;
+        public long LogonTime;
+        public long CurrentTime;
     }
 
     public enum WTS_INFO_CLASS
@@ -150,16 +151,18 @@ function Get-SessionIdleSeconds([int]$SessionId) {
     if ([WtsApi]::WTSQuerySessionInformation([IntPtr]::Zero, $SessionId, [WtsApi+WTS_INFO_CLASS]::WTSSessionInfo, [ref]$buf, [ref]$bytes)) {
         try {
             $info = [System.Runtime.InteropServices.Marshal]::PtrToStructure($buf, [type]'WtsApi+WTSINFO')
-            return [int]$info.LastInputTime
+            
+            # Calculate idle time: CurrentTime - LastInputTime (in 100-nanosecond intervals)
+            # Convert to seconds: / 10,000,000
+            if ($info.LastInputTime -gt 0) {
+                $idleTicks = $info.CurrentTime - $info.LastInputTime
+                if ($idleTicks -lt 0) { $idleTicks = 0 }
+                return [math]::Round($idleTicks / 10000000)
+            }
+            return 0
         } finally {
             [WtsApi]::WTSFreeMemory($buf)
         }
-    }
-
-    # Fallback: WTSIdleTime (DWORD)
-    if ([WtsApi]::WTSQuerySessionInformation([IntPtr]::Zero, $SessionId, [WtsApi+WTS_INFO_CLASS]::WTSIdleTime, [ref]$buf, [ref]$bytes)) {
-        try { return [System.Runtime.InteropServices.Marshal]::ReadInt32($buf) }
-        finally { [WtsApi]::WTSFreeMemory($buf) }
     }
 
     return $null
@@ -191,8 +194,7 @@ function Get-UserSid($Domain, $Username) {
         return $null
     }
 }
-
-Write-EventLog -EventLog $EventLog -EventSource $EventSource -EventId 100 -EntryType Information -Message "AutoLogoff Service Started. Threshold: $IdleThresholdMinutes minutes."
+Write-EventLog -LogName $EventLogName -Source $EventSource -EventId 100 -EntryType Information -Message "AutoLogoff Service Started. Threshold: $IdleThresholdMinutes minutes."
 
 while ($true) {
     try {
@@ -217,13 +219,13 @@ while ($true) {
 
                 $idle = Get-SessionIdleSeconds -SessionId $sid
                 if ($null -ne $idle -and $idle -ge $IdleThresholdSeconds) {
-                    Write-EventLog -EventLog $EventLog -EventSource $EventSource -Eventid 101 -EntryType Information -Message "Idle threshold exceeded for user $userDomainName (Session $sid). Idle time: $idle seconds. Initiating logoff."                    
+                    Write-EventLog -LogName $EventLogName -Source $EventSource -Eventid 101 -EntryType Information -Message "Idle threshold exceeded for user $userDomainName (Session $sid). Idle time: $idle seconds. Initiating logoff."                    
                     & "$env:SystemRoot\System32\logoff.exe" $sid
                 }
             }
         }
     } catch {
-        Write-EventLog -EventLog $EventLog -EventSource $EventSource -EventId 102 -EntryType Error -Message "Error in AutoLogoff loop: $_"
+        Write-EventLog -LogName $EventLogName -Source $EventSource -EventId 102 -EntryType Error -Message "Error in AutoLogoff loop: $_"
     }
     Start-Sleep -Seconds $CheckIntervalSeconds
 }
