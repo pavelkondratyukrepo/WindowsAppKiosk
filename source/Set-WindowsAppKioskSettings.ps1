@@ -266,7 +266,7 @@ $DirTools = Join-Path -Path $Script:Dir -ChildPath "Tools"
 $DirUserLogos = Join-Path -Path $Script:Dir -ChildPath "UserLogos"
 $DirFunctions = Join-Path -Path $Script:Dir -ChildPath "Scripts\Functions"
 $DirSchedTasksScripts = Join-Path -Path $Script:Dir -ChildPath "Scripts\ScheduledTasks"
-$FileKeyboardFilterConfig = Join-Path -Path $DirSchedTasksScripts -ChildPath "Set-KeyboardFilterConfiguration.ps1"
+
 
 #region Parameter Conversions
 
@@ -782,12 +782,14 @@ If ($WindowsAppShell) {
 #endregion AppLocker Configuration
 
 #region Keyboard Filter
+$SchedTasksScriptsDir = Join-Path -Path $DirKiosk -ChildPath 'ScheduledTasksScripts'
 
 if ($WindowsAppShell) {
-    New-Item -Path (Join-Path -Path $DirKiosk -ChildPath 'ScheduledTasksScripts') -ItemType Directory -Force | Out-Null
-    $SchedTasksScriptsDir = Join-Path -Path $DirKiosk -ChildPath 'ScheduledTasksScripts'
-    Copy-Item -Path $FileKeyboardFilterConfig -Destination $SchedTasksScriptsDir -Force
+    If (-not (Test-Path -Path $SchedTasksScriptsDir)) {
+        New-Item -Path $SchedTasksScriptsDir -ItemType Directory -Force | Out-Null
+    }
     $TaskScriptName = 'Set-KeyboardFilterConfiguration.ps1'
+    Copy-Item -Path (Join-Path -Path $DirSchedTasksScripts -ChildPath $TaskScriptName) -Destination $SchedTasksScriptsDir -Force
     $TaskScriptFullName = Join-Path -Path $SchedTasksScriptsDir -ChildPath $TaskScriptName
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventID 125 -Message "Enabling Keyboard filter."
     Enable-WindowsOptionalFeature -Online -FeatureName Client-KeyboardFilter -All -NoRestart
@@ -818,24 +820,28 @@ if ($WindowsAppShell) {
 
 # Create User-based Idle Logoff Task if IdleLogoffTimeoutMinutes is specified
 If ($IdleLogoffTimeoutMinutes) {
-    $TaskName = 'Windows-App-Kiosk - User Idle Logoff'
-    $TaskDescription = "Automatically logs off user after $IdleLogoffTimeoutMinutes minutes of system inactivity"
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 126 -Message "Creating User Idle Logoff Task: '$TaskName' with $IdleLogoffTimeoutMinutes minute idle timeout." 
-    # Create action to log off the current user
-    $TaskAction = New-ScheduledTaskAction -Execute 'logoff.exe'
-    $TaskTrigger = New-ScheduledTaskTrigger -AtLogOn
-    # Configure the idle condition using task settings
-    $TaskSettings = New-ScheduledTaskSettingsSet -DisallowDemandStart -DontStopOnIdleEnd -Hidden -RunOnlyIfIdle -IdleWaitTimeout (New-TimeSpan -Days 365) -IdleDuration (New-TimeSpan -Minutes $IdleLogoffTimeoutMinutes) -MultipleInstances Parallel
-    # Run as the logged-in user with limited privileges
-    $TaskPrincipal = New-ScheduledTaskPrincipal -GroupId 'BuiltIn\Users' -RunLevel Limited    
-    # Register the task
-    Register-ScheduledTask -TaskName $TaskName -Description $TaskDescription -Action $TaskAction -Settings $TaskSettings -Principal $TaskPrincipal -Trigger $TaskTrigger -Force
-    
+    If (-not (Test-Path -Path $SchedTasksScriptsDir)) {
+        New-Item -Path $SchedTasksScriptsDir -ItemType Directory -Force | Out-Null
+    }
+    $TaskScriptName = 'Logoff-InactiveUsers.ps1'
+    Copy-Item -Path (Join-Path -Path $DirSchedTasksScripts -ChildPath $TaskScriptName) -Destination $SchedTasksScriptsDir -Force
+    $TaskScriptFullName = Join-Path -Path $SchedTasksScriptsDir -ChildPath $TaskScriptName
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventID 125 -Message "Enabling Automatic Logoff on Idle Scheduled Task"
+    $TaskName = "Windows-App-Kiosk - Logoff Idle Users"
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 126 -Message "Creating Scheduled Task: '$TaskName'."
+    $TaskDescription = "Automatically Logs off any idle users after a set period"
+    $TaskTrigger = New-ScheduledTaskTrigger -AtStartup
+    $TaskScriptArgs = "-IdleThresholdMinutes $IdleLogoffTimeoutMinutes"
+    $TaskAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-executionpolicy bypass -file $TaskScriptFullName $TaskScriptArgs"
+    $TaskPrincipal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+    $TaskSettings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -AllowStartIfOnBatteries
+    Register-ScheduledTask -TaskName $TaskName -Description $TaskDescription -Action $TaskAction -Settings $TaskSettings -Principal $TaskPrincipal -Trigger $TaskTrigger
     If (Get-ScheduledTask | Where-Object { $_.TaskName -eq "$TaskName" }) {
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 119 -Message "User Idle Logoff Task created successfully using native Task Scheduler idle detection."
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 119 -Message "Scheduled Task created successfully."
     }
     Else {
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Error -EventId 120 -Message "User Idle Logoff Task not created."
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Error -EventId 120 -Message "Scheduled Task not created."
+        Exit 1618
     }
 }
 
