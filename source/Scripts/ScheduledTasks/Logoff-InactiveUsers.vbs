@@ -4,7 +4,7 @@
 
 Option Explicit
 
-Dim objShell, objFSO, args, strCommand
+Dim objShell, strPSFile, args, strCommand
 
 Set objShell = CreateObject("WScript.Shell")
 
