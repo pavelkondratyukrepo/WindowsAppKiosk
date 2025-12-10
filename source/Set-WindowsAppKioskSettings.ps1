@@ -99,9 +99,6 @@ This switch parameter determines if power management policies are configured via
 .PARAMETER IdleSleepTimeoutMinutes
 This integer parameter specifies the number of minutes of user inactivity before the system automatically goes to sleep. This parameter is required when SetPowerPolicies is used and works in conjunction with it to manage power consumption in shared PC environments. When used with other idle timeout parameters, this must be at least 15 minutes greater than both IdleLockTimeoutMinutes and IdleLogoffTimeoutMinutes to ensure proper escalation sequence (lock → logoff → sleep).
 
-.PARAMETER IdleLogoffTimeoutMinutes
-This integer parameter specifies the number of minutes of user inactivity before an automatic logoff is triggered. Valid range is 1-1440 minutes (1 day). When specified, a scheduled task is created to monitor user activity and automatically log off users after the specified idle time. When used with other idle timeout parameters, this must be at least 15 minutes greater than IdleLockTimeoutMinutes and at least 15 minutes less than IdleSleepTimeoutMinutes.
-
 .PARAMETER Reinstall
 This switch parameter allows the script to be re-run on a system that has already been configured. It triggers the removal of existing kiosk settings before applying the new configuration.
 
@@ -131,11 +128,6 @@ param (
     [ValidateRange(5, 60)]    
     [int]$IdleLockTimeoutMinutes,
     
-    [Parameter(ParameterSetName = 'DirectLogonShellLauncher')]
-    [Parameter(ParameterSetName = 'DirectLogonMultiAppKiosk')]  
-    [ValidateRange(5, 1440)]
-    [int]$IdleLogoffTimeoutMinutes,
-
     [Parameter(ParameterSetName = 'DirectLogonShellLauncher')]
     [Parameter(ParameterSetName = 'DirectLogonMultiAppKiosk')]
     [switch]$SharedPC,
@@ -194,19 +186,8 @@ If ($SetPowerPolicies -and $null -eq $IdleSleepTimeoutMinutes) {
     Throw "You must specify a value for 'IdleSleepTimeoutMinutes' when 'SetPowerPolicies' is used"
 } 
 
-# Validate idle timeout parameter ordering: IdleLockTimeout < IdleLogoffTimeout < IdleSleepTimeout
+# Validate idle timeout parameter ordering: IdleLockTimeoutMinutes < IdleSleepTimeout
 # Ensure minimum 15-minute gap between each timeout level
-If ($IdleLockTimeoutMinutes -and $IdleLogoffTimeoutMinutes) {
-    If ($IdleLogoffTimeoutMinutes -lt ($IdleLockTimeoutMinutes + 15)) {
-        Throw "IdleLogoffTimeoutMinutes ($IdleLogoffTimeoutMinutes) must be at least 15 minutes greater than IdleLockTimeoutMinutes ($IdleLockTimeoutMinutes). Minimum required: $($IdleLockTimeoutMinutes + 15)"
-    }
-}
-
-If ($IdleLogoffTimeoutMinutes -and $IdleSleepTimeoutMinutes) {
-    If ($IdleSleepTimeoutMinutes -lt ($IdleLogoffTimeoutMinutes + 15)) {
-        Throw "IdleSleepTimeoutMinutes ($IdleSleepTimeoutMinutes) must be at least 15 minutes greater than IdleLogoffTimeoutMinutes ($IdleLogoffTimeoutMinutes). Minimum required: $($IdleLogoffTimeoutMinutes + 15)"
-    }
-}
 
 If ($IdleLockTimeoutMinutes -and $IdleSleepTimeoutMinutes) {
     If ($IdleSleepTimeoutMinutes -lt ($IdleLockTimeoutMinutes + 15)) {
@@ -266,7 +247,7 @@ $DirTools = Join-Path -Path $Script:Dir -ChildPath "Tools"
 $DirUserLogos = Join-Path -Path $Script:Dir -ChildPath "UserLogos"
 $DirFunctions = Join-Path -Path $Script:Dir -ChildPath "Scripts\Functions"
 $DirSchedTasksScripts = Join-Path -Path $Script:Dir -ChildPath "Scripts\ScheduledTasks"
-$FileKeyboardFilterConfig = Join-Path -Path $DirSchedTasksScripts -ChildPath "Set-KeyboardFilterConfiguration.ps1"
+
 
 #region Parameter Conversions
 
@@ -443,10 +424,10 @@ Else {
     $Configuration = Get-AssignedAccessConfiguration
     If ($Configuration) {
         $FormattedConfiguration = Format-OutputXml -Configuration $Configuration
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 57 -Message "Assigned Access configuration successfully applied.`n-----BEGIN CONFIGURATION-----`n$FormattedConfiguration`n-----END CONFIGURATION-----"
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 58 -Message "Assigned Access configuration successfully applied.`n-----BEGIN CONFIGURATION-----`n$FormattedConfiguration`n-----END CONFIGURATION-----"
     }
     Else {
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Error -EventId 58 -Message "Assigned Access configuration failed. Computer should be restarted first."
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Error -EventId 59 -Message "Assigned Access configuration failed. Computer should be restarted first."
         Exit 1618        
     }  
 }
@@ -782,12 +763,14 @@ If ($WindowsAppShell) {
 #endregion AppLocker Configuration
 
 #region Keyboard Filter
+$SchedTasksScriptsDir = Join-Path -Path $DirKiosk -ChildPath 'ScheduledTasksScripts'
 
 if ($WindowsAppShell) {
-    New-Item -Path (Join-Path -Path $DirKiosk -ChildPath 'ScheduledTasksScripts') -ItemType Directory -Force | Out-Null
-    $SchedTasksScriptsDir = Join-Path -Path $DirKiosk -ChildPath 'ScheduledTasksScripts'
-    Copy-Item -Path $FileKeyboardFilterConfig -Destination $SchedTasksScriptsDir -Force
+    If (-not (Test-Path -Path $SchedTasksScriptsDir)) {
+        New-Item -Path $SchedTasksScriptsDir -ItemType Directory -Force | Out-Null
+    }
     $TaskScriptName = 'Set-KeyboardFilterConfiguration.ps1'
+    Copy-Item -Path (Join-Path -Path $DirSchedTasksScripts -ChildPath $TaskScriptName) -Destination $SchedTasksScriptsDir -Force
     $TaskScriptFullName = Join-Path -Path $SchedTasksScriptsDir -ChildPath $TaskScriptName
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventID 125 -Message "Enabling Keyboard filter."
     Enable-WindowsOptionalFeature -Online -FeatureName Client-KeyboardFilter -All -NoRestart
@@ -813,33 +796,6 @@ if ($WindowsAppShell) {
 }
 
 #endregion Keyboard Filter
-
-#region Idle Logoff User Task
-
-# Create User-based Idle Logoff Task if IdleLogoffTimeoutMinutes is specified
-If ($IdleLogoffTimeoutMinutes) {
-    $TaskName = 'Windows-App-Kiosk - User Idle Logoff'
-    $TaskDescription = "Automatically logs off user after $IdleLogoffTimeoutMinutes minutes of system inactivity"
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 126 -Message "Creating User Idle Logoff Task: '$TaskName' with $IdleLogoffTimeoutMinutes minute idle timeout." 
-    # Create action to log off the current user
-    $TaskAction = New-ScheduledTaskAction -Execute 'logoff.exe'
-    $TaskTrigger = New-ScheduledTaskTrigger -AtLogOn
-    # Configure the idle condition using task settings
-    $TaskSettings = New-ScheduledTaskSettingsSet -DisallowDemandStart -DontStopOnIdleEnd -Hidden -RunOnlyIfIdle -IdleWaitTimeout (New-TimeSpan -Days 365) -IdleDuration (New-TimeSpan -Minutes $IdleLogoffTimeoutMinutes) -MultipleInstances Parallel
-    # Run as the logged-in user with limited privileges
-    $TaskPrincipal = New-ScheduledTaskPrincipal -GroupId 'BuiltIn\Users' -RunLevel Limited    
-    # Register the task
-    Register-ScheduledTask -TaskName $TaskName -Description $TaskDescription -Action $TaskAction -Settings $TaskSettings -Principal $TaskPrincipal -Trigger $TaskTrigger -Force
-    
-    If (Get-ScheduledTask | Where-Object { $_.TaskName -eq "$TaskName" }) {
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 119 -Message "User Idle Logoff Task created successfully using native Task Scheduler idle detection."
-    }
-    Else {
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Error -EventId 120 -Message "User Idle Logoff Task not created."
-    }
-}
-
-#endregion Idle Logoff User Task
 
 Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 150 -Message "Updating Group Policy"
 $GPUpdate = Start-Process -FilePath 'GPUpdate' -ArgumentList '/force' -Wait -PassThru
