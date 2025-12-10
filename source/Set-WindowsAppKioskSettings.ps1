@@ -439,14 +439,34 @@ Else {
     }  
     $DestFile = Join-Path $DirKiosk -ChildPath 'AssignedAccessConfiguration.xml'
     Copy-Item -Path $ConfigFile -Destination $DestFile -Force
+    If ($IdleLogoffTimeoutMinutes) {
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 57 -Message "Adding wscript.exe and powershell.exe to the allowed apps for the autologoff script."
+        
+        [xml]$xml = Get-Content -Path $DestFile
+        $allowedAppsNodes = $xml.SelectNodes("//*[local-name()='AllowedApps']")
+        
+        foreach ($node in $allowedAppsNodes) {
+            $nsUri = $node.NamespaceURI
+            
+            $wscript = $xml.CreateElement("App", $nsUri)
+            $wscript.SetAttribute("DesktopAppPath", "%SYSTEMROOT%\System32\wscript.exe")
+            $node.AppendChild($wscript) | Out-Null
+            
+            $powershell = $xml.CreateElement("App", $nsUri)
+            $powershell.SetAttribute("DesktopAppPath", "%SYSTEMROOT%\System32\WindowsPowerShell\v1.0\powershell.exe")
+            $node.AppendChild($powershell) | Out-Null
+        }
+        
+        $xml.Save($DestFile)
+    }
     Set-AssignedAccessConfiguration -FilePath $DestFile
     $Configuration = Get-AssignedAccessConfiguration
     If ($Configuration) {
         $FormattedConfiguration = Format-OutputXml -Configuration $Configuration
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 57 -Message "Assigned Access configuration successfully applied.`n-----BEGIN CONFIGURATION-----`n$FormattedConfiguration`n-----END CONFIGURATION-----"
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 58 -Message "Assigned Access configuration successfully applied.`n-----BEGIN CONFIGURATION-----`n$FormattedConfiguration`n-----END CONFIGURATION-----"
     }
     Else {
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Error -EventId 58 -Message "Assigned Access configuration failed. Computer should be restarted first."
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Error -EventId 59 -Message "Assigned Access configuration failed. Computer should be restarted first."
         Exit 1618        
     }  
 }
@@ -823,23 +843,21 @@ If ($IdleLogoffTimeoutMinutes) {
     If (-not (Test-Path -Path $SchedTasksScriptsDir)) {
         New-Item -Path $SchedTasksScriptsDir -ItemType Directory -Force | Out-Null
     }
-    $TaskScriptName = 'Logoff-InactiveUsers.ps1'
-    Copy-Item -Path (Join-Path -Path $DirSchedTasksScripts -ChildPath $TaskScriptName) -Destination $SchedTasksScriptsDir -Force
-    $TaskScriptFullName = Join-Path -Path $SchedTasksScriptsDir -ChildPath $TaskScriptName
+    $TaskScriptNameNoExt = 'Logoff-InactiveUsers'
+    $SourceFiles = Get-ChildItem -Path $DirSchedTasksScripts -Filter "$TaskScriptNameNoExt.*"
+    $SourceFiles | Copy-Item -Destination $SchedTasksScriptsDir -Force
+    $TaskScriptFullName = Join-Path -Path $SchedTasksScriptsDir -ChildPath $TaskScriptNameNoExt + '.vbs'
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventID 125 -Message "Enabling Automatic Logoff on Idle Scheduled Task"
     $TaskName = "Windows-App-Kiosk - Logoff Idle Users"
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 126 -Message "Creating Scheduled Task: '$TaskName'."
     $TaskDescription = "Automatically Logs off any idle users after a set period"
-    $TaskTrigger = @(
-        New-ScheduledTaskTrigger -AtStartup
-        New-ScheduledTaskTrigger -AtLogon
-    )
-    $TaskScriptArgs = "-IdleThresholdMinutes $IdleLogoffTimeoutMinutes"
-    $TaskAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-executionpolicy bypass -file $TaskScriptFullName $TaskScriptArgs"
-    $TaskPrincipal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+    $TaskTrigger = New-ScheduledTaskTrigger -AtLogon
+    $TaskScriptArgs = "$IdleLogoffTimeoutMinutes"
+    $TaskAction = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument "`"$TaskScriptFullName`" $TaskScriptArgs"
+    $TaskPrincipal = New-ScheduledTaskPrincipal -GroupId "BUILTIN\Users" -RunLevel LeastPrivilege
     # Set ExecutionTimeLimit to 0 (Infinite) so the task doesn't stop after 3 days (default)
     # Add RestartCount to ensure resilience if the script crashes
-    $TaskSettings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -AllowStartIfOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+    $TaskSettings = New-ScheduledTaskSettingsSet -MultipleInstances Parallel -AllowStartIfOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
     Register-ScheduledTask -TaskName $TaskName -Description $TaskDescription -Action $TaskAction -Settings $TaskSettings -Principal $TaskPrincipal -Trigger $TaskTrigger
     If (Get-ScheduledTask | Where-Object { $_.TaskName -eq "$TaskName" }) {
         Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 119 -Message "Scheduled Task created successfully."
