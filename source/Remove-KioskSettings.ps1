@@ -8,11 +8,12 @@ param (
 $script:FullName = $MyInvocation.MyCommand.Path
 $script:Dir = Split-Path $script:FullName
 $DirFunctions = Join-Path -Path $Script:Dir -ChildPath "Scripts\Functions"
-$DirGPOs = "$Script:Dir\gposettings"
-$DirTools = "$Script:Dir\Tools"
-$DirKiosk = "$env:SystemDrive\KioskSettings"
-$DirProvisioningPackages = "$DirKiosk\ProvisioningPackages"
-$FileAppLockerRestore = "$DirKiosk\AppLockerPolicy.xml"
+$DirGPOs = Join-Path -Path $Script:Dir -ChildPath "gposettings"
+$DirTools = Join-Path -Path $Script:Dir -ChildPath "Tools"
+$DirKiosk = Join-Path -Path $env:SystemDrive -ChildPath "KioskSettings"
+$DirProvisioningPackages = Join-Path -Path $DirKiosk -ChildPath "ProvisioningPackages"
+$DirUserLogos = Join-Path -Path $DirKiosk -ChildPath "UserLogos"
+$FileAppLockerRestore = Join-Path -Path $DirKiosk -ChildPath "AppLockerPolicy.xml"
 $FileRegValuesRestore = If (Test-Path -Path $DirKiosk) { (Get-ChildItem -Path $DirKiosk -Filter '*.csv').FullName } Else { $null }
 
 #endregion Set Variables
@@ -178,10 +179,10 @@ If (Test-Path -Path 'HKLM:\Software\Kiosk') {
         }
 
         # Restore User Logos
-        If (Test-Path -Path "$DirKiosk\UserLogos") {
+        If (Test-Path -Path $DirUserLogos) {
             Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 17 -Message "Restoring User Logo Files"
-            Get-ChildItem -Path "$DirKiosk\UserLogos" | Copy-Item -Destination "$env:ProgramData\Microsoft\User Account Pictures" -Force
-            $null = cmd /c "$DirTools\lgpo.exe" /t "$DirGPOs\Remove-computer-userlogos.txt" '2>&1'
+            Get-ChildItem -Path $DirUserLogos | Copy-Item -Destination "$env:ProgramData\Microsoft\User Account Pictures" -Force
+            $null = cmd /c "$DirTools\lgpo.exe" /t "$DirGPOs\Remove-UserLogos.txt" '2>&1'
         }
 
         # Remove Kiosk Settings Directory
