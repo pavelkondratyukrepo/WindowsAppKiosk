@@ -124,28 +124,30 @@ function Get-WTSSessionInfo {
 }
 
 function Get-WTSIdleTimeMinutes {
-    param([int]$SessionId)
+    param(
+        [int]$SessionId
+    )
     # Prefer WTSIdleTime (returns seconds); fall back to WTSSessionInfo timestamps
     $buf = [IntPtr]::Zero; $bytes = 0
     $ok = [WtsApi]::WTSQuerySessionInformation([WtsApi]::WTS_CURRENT_SERVER_HANDLE, $SessionId, [WtsApi+WTS_INFO_CLASS]::WTSIdleTime, [ref]$buf, [ref]$bytes)
     if ($ok -and $bytes -ge 4) {
         try {
             $seconds = [System.Runtime.InteropServices.Marshal]::ReadInt32($buf)
+            
+            # Debug: Log idle time if it's significant (e.g. > 10s) to help troubleshoot false positives
+            if ($seconds -ge 10) {
+                Write-Log -Message "Session $SessionId idle seconds: $seconds" -Type Information -EventId 999
+            }
+
             if ($seconds -lt 0) { $seconds = 0 }
             return [int][math]::Floor($seconds / 60.0)
         }
         finally { [WtsApi]::WTSFreeMemory($buf) }
     }
 
-    $info = Get-WTSSessionInfo -SessionId $SessionId
-    if ($null -ne $info) {
-        $lastInputUtc = [DateTime]::FromFileTimeUtc($info.LastInputTime)
-        $currentUtc = [DateTime]::FromFileTimeUtc($info.CurrentTime)
-        $mins = [int][math]::Floor(([TimeSpan]($currentUtc - $lastInputUtc)).TotalMinutes)
-        return ([math]::Max(0, $mins))
-    }
-
-    return $null
+    # Fallback removed as LastInputTime is often unreliable/stuck, causing false logoffs.
+    Write-Log -Message "Could not query WTSIdleTime for session $SessionId. Assuming Active." -Type Warning -EventId 998
+    return 0
 }
 
 function Get-WtsSessions {
