@@ -99,9 +99,6 @@ This switch parameter determines if power management policies are configured via
 .PARAMETER IdleSleepTimeoutMinutes
 This integer parameter specifies the number of minutes of user inactivity before the system automatically goes to sleep. This parameter is required when SetPowerPolicies is used and works in conjunction with it to manage power consumption in shared PC environments. When used with other idle timeout parameters, this must be at least 15 minutes greater than both IdleLockTimeoutMinutes and IdleLogoffTimeoutMinutes to ensure proper escalation sequence (lock → logoff → sleep).
 
-.PARAMETER IdleLogoffTimeoutMinutes
-This integer parameter specifies the number of minutes of user inactivity before an automatic logoff is triggered. Valid range is 1-1440 minutes (1 day). When specified, a scheduled task is created to monitor user activity and automatically log off users after the specified idle time. When used with other idle timeout parameters, this must be at least 15 minutes greater than IdleLockTimeoutMinutes and at least 15 minutes less than IdleSleepTimeoutMinutes.
-
 .PARAMETER Reinstall
 This switch parameter allows the script to be re-run on a system that has already been configured. It triggers the removal of existing kiosk settings before applying the new configuration.
 
@@ -131,11 +128,6 @@ param (
     [ValidateRange(5, 60)]    
     [int]$IdleLockTimeoutMinutes,
     
-    [Parameter(ParameterSetName = 'DirectLogonShellLauncher')]
-    [Parameter(ParameterSetName = 'DirectLogonMultiAppKiosk')]  
-    [ValidateRange(5, 1440)]
-    [int]$IdleLogoffTimeoutMinutes,
-
     [Parameter(ParameterSetName = 'DirectLogonShellLauncher')]
     [Parameter(ParameterSetName = 'DirectLogonMultiAppKiosk')]
     [switch]$SharedPC,
@@ -194,19 +186,8 @@ If ($SetPowerPolicies -and $null -eq $IdleSleepTimeoutMinutes) {
     Throw "You must specify a value for 'IdleSleepTimeoutMinutes' when 'SetPowerPolicies' is used"
 } 
 
-# Validate idle timeout parameter ordering: IdleLockTimeout < IdleLogoffTimeout < IdleSleepTimeout
+# Validate idle timeout parameter ordering: IdleLockTimeoutMinutes < IdleSleepTimeout
 # Ensure minimum 15-minute gap between each timeout level
-If ($IdleLockTimeoutMinutes -and $IdleLogoffTimeoutMinutes) {
-    If ($IdleLogoffTimeoutMinutes -lt ($IdleLockTimeoutMinutes + 15)) {
-        Throw "IdleLogoffTimeoutMinutes ($IdleLogoffTimeoutMinutes) must be at least 15 minutes greater than IdleLockTimeoutMinutes ($IdleLockTimeoutMinutes). Minimum required: $($IdleLockTimeoutMinutes + 15)"
-    }
-}
-
-If ($IdleLogoffTimeoutMinutes -and $IdleSleepTimeoutMinutes) {
-    If ($IdleSleepTimeoutMinutes -lt ($IdleLogoffTimeoutMinutes + 15)) {
-        Throw "IdleSleepTimeoutMinutes ($IdleSleepTimeoutMinutes) must be at least 15 minutes greater than IdleLogoffTimeoutMinutes ($IdleLogoffTimeoutMinutes). Minimum required: $($IdleLogoffTimeoutMinutes + 15)"
-    }
-}
 
 If ($IdleLockTimeoutMinutes -and $IdleSleepTimeoutMinutes) {
     If ($IdleSleepTimeoutMinutes -lt ($IdleLockTimeoutMinutes + 15)) {
@@ -439,26 +420,6 @@ Else {
     }  
     $DestFile = Join-Path $DirKiosk -ChildPath 'AssignedAccessConfiguration.xml'
     Copy-Item -Path $ConfigFile -Destination $DestFile -Force
-    If ($IdleLogoffTimeoutMinutes) {
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 57 -Message "Adding wscript.exe and powershell.exe to the allowed apps for the autologoff script."
-        
-        [xml]$xml = Get-Content -Path $DestFile
-        $allowedAppsNodes = $xml.SelectNodes("//*[local-name()='AllowedApps']")
-        
-        foreach ($node in $allowedAppsNodes) {
-            $nsUri = $node.NamespaceURI
-            
-            $wscript = $xml.CreateElement("App", $nsUri)
-            $wscript.SetAttribute("DesktopAppPath", "%SYSTEMROOT%\System32\wscript.exe")
-            $node.AppendChild($wscript) | Out-Null
-            
-            $powershell = $xml.CreateElement("App", $nsUri)
-            $powershell.SetAttribute("DesktopAppPath", "%SYSTEMROOT%\System32\WindowsPowerShell\v1.0\powershell.exe")
-            $node.AppendChild($powershell) | Out-Null
-        }
-        
-        $xml.Save($DestFile)
-    }
     Set-AssignedAccessConfiguration -FilePath $DestFile
     $Configuration = Get-AssignedAccessConfiguration
     If ($Configuration) {
@@ -835,39 +796,6 @@ if ($WindowsAppShell) {
 }
 
 #endregion Keyboard Filter
-
-#region Idle Logoff User Task
-
-# Create User-based Idle Logoff Task if IdleLogoffTimeoutMinutes is specified
-If ($IdleLogoffTimeoutMinutes) {
-    If (-not (Test-Path -Path $SchedTasksScriptsDir)) {
-        New-Item -Path $SchedTasksScriptsDir -ItemType Directory -Force | Out-Null
-    }
-    $TaskScriptNameNoExt = 'Logoff-InactiveUsers'
-    $SourceFiles = Get-ChildItem -Path $DirSchedTasksScripts -Filter "$TaskScriptNameNoExt.*"
-    $SourceFiles | Copy-Item -Destination $SchedTasksScriptsDir -Force
-    $TaskScriptFullName = Join-Path -Path $SchedTasksScriptsDir -ChildPath ($TaskScriptNameNoExt + '.vbs')
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventID 125 -Message "Enabling Automatic Logoff on Idle Scheduled Task"
-    $TaskName = "Windows-App-Kiosk - Logoff Idle Users"
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 126 -Message "Creating Scheduled Task: '$TaskName'."
-    $TaskDescription = "Automatically Logs off any idle users after a set period"
-    $TaskTrigger = New-ScheduledTaskTrigger -AtLogon
-    $TaskScriptArgs = "$IdleLogoffTimeoutMinutes"
-    $TaskAction = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument "`"$TaskScriptFullName`" $TaskScriptArgs"
-    $TaskPrincipal = New-ScheduledTaskPrincipal -GroupId "BUILTIN\Users" -RunLevel Limited
-    # Set ExecutionTimeLimit to 0 (Infinite) so the task doesn't stop after 3 days (default)
-    # Add RestartCount to ensure resilience if the script crashes
-    $TaskSettings = New-ScheduledTaskSettingsSet -MultipleInstances Parallel -AllowStartIfOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
-    Register-ScheduledTask -TaskName $TaskName -Description $TaskDescription -Action $TaskAction -Settings $TaskSettings -Principal $TaskPrincipal -Trigger $TaskTrigger
-    If (Get-ScheduledTask | Where-Object { $_.TaskName -eq "$TaskName" }) {
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 119 -Message "Scheduled Task created successfully."
-    }
-    Else {
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Error -EventId 120 -Message "Scheduled Task not created."
-        Exit 1618
-    }
-}
-#endregion Idle Logoff User Task
 
 Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 150 -Message "Updating Group Policy"
 $GPUpdate = Start-Process -FilePath 'GPUpdate' -ArgumentList '/force' -Wait -PassThru
