@@ -12,7 +12,7 @@ param (
 
 $ErrorActionPreference = 'SilentlyContinue'
 
-# P/Invoke for GetLastInputInfo
+# P/Invoke for GetLastInputInfo and GetTickCount
 $code = @'
 using System;
 using System.Runtime.InteropServices;
@@ -26,6 +26,9 @@ public static class Win32 {
 
     [DllImport("user32.dll")]
     public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+
+    [DllImport("kernel32.dll")]
+    public static extern uint GetTickCount();
 }
 '@
 
@@ -35,32 +38,54 @@ try {
     # Type might already be added if run multiple times in same session
 }
 
+# Setup Event Log for debugging
+$EventLogName = "Windows-App-Kiosk"
+$EventSource = "AutoLogoff-User"
+if (-not ([System.Diagnostics.EventLog]::SourceExists($EventSource))) {
+    try {
+        New-EventLog -LogName $EventLogName -Source $EventSource -ErrorAction SilentlyContinue
+    } catch {}
+}
+
+function Write-Log {
+    param([string]$Msg, [int]$Id=100, [System.Diagnostics.EventLogEntryType]$Type='Information')
+    try {
+        Write-EventLog -LogName $EventLogName -Source $EventSource -EventId $Id -EntryType $Type -Message $Msg -ErrorAction SilentlyContinue
+    } catch {}
+}
+
 function Get-IdleSeconds {
     $lii = New-Object Win32+LASTINPUTINFO
     $lii.cbSize = [System.Runtime.InteropServices.Marshal]::SizeOf($lii)
     
     if ([Win32]::GetLastInputInfo([ref]$lii)) {
-        $ticks = [Environment]::TickCount
-        # Handle potential TickCount rollover (though unlikely to affect short idle checks)
-        if ($ticks -lt $lii.dwTime) { return 0 }
+        $ticks = [Win32]::GetTickCount()
         
-        return ($ticks - $lii.dwTime) / 1000
+        # Unsigned subtraction handles rollover correctly as long as idle time < 49.7 days
+        # e.g. Current=10, Last=5 -> 5
+        # e.g. Current=5, Last=4294967290 (near max) -> 5 - (-6) = 11? No.
+        # In UInt32: 5 - 4294967290 = 11.
+        
+        $diff = $ticks - $lii.dwTime
+        return $diff / 1000
     }
     return 0
 }
 
 $LimitSeconds = $IdleMinutes * 60
+Write-Log "Starting User Idle Monitor. Threshold: $IdleMinutes minutes ($LimitSeconds seconds)."
 
 while ($true) {
     $currentIdle = Get-IdleSeconds
     
+    # Debug logging every minute (approx)
+    # if ($currentIdle -gt 60) { Write-Log "Current Idle: $currentIdle seconds" -Id 900 }
+
     if ($currentIdle -ge $LimitSeconds) {
-        # Logoff the current session
+        Write-Log "Idle threshold reached ($currentIdle >= $LimitSeconds). Logging off." -Id 101
         & "$env:SystemRoot\System32\logoff.exe"
         Exit
     }
     
-    # Check every 10 seconds
-    Start-Sleep -Seconds 30
+    Start-Sleep -Seconds 10
 }
-3
