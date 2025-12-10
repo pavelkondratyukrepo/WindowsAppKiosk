@@ -846,7 +846,7 @@ If ($IdleLogoffTimeoutMinutes) {
     $TaskScriptNameNoExt = 'Logoff-InactiveUsers'
     $SourceFiles = Get-ChildItem -Path $DirSchedTasksScripts -Filter "$TaskScriptNameNoExt.*"
     $SourceFiles | Copy-Item -Destination $SchedTasksScriptsDir -Force
-    $TaskScriptFullName = Join-Path -Path $SchedTasksScriptsDir -ChildPath $TaskScriptNameNoExt + '.vbs'
+    $TaskScriptFullName = Join-Path -Path $SchedTasksScriptsDir -ChildPath ($TaskScriptNameNoExt + '.vbs')
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventID 125 -Message "Enabling Automatic Logoff on Idle Scheduled Task"
     $TaskName = "Windows-App-Kiosk - Logoff Idle Users"
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 126 -Message "Creating Scheduled Task: '$TaskName'."
@@ -854,7 +854,7 @@ If ($IdleLogoffTimeoutMinutes) {
     $TaskTrigger = New-ScheduledTaskTrigger -AtLogon
     $TaskScriptArgs = "$IdleLogoffTimeoutMinutes"
     $TaskAction = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument "`"$TaskScriptFullName`" $TaskScriptArgs"
-    $TaskPrincipal = New-ScheduledTaskPrincipal -GroupId "BUILTIN\Users" -RunLevel LeastPrivilege
+    $TaskPrincipal = New-ScheduledTaskPrincipal -GroupId "BUILTIN\Users" -RunLevel Limited
     # Set ExecutionTimeLimit to 0 (Infinite) so the task doesn't stop after 3 days (default)
     # Add RestartCount to ensure resilience if the script crashes
     $TaskSettings = New-ScheduledTaskSettingsSet -MultipleInstances Parallel -AllowStartIfOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
