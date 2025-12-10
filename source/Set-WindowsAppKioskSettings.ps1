@@ -830,7 +830,10 @@ If ($IdleLogoffTimeoutMinutes) {
     $TaskName = "Windows-App-Kiosk - Logoff Idle Users"
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 126 -Message "Creating Scheduled Task: '$TaskName'."
     $TaskDescription = "Automatically Logs off any idle users after a set period"
-    $TaskTrigger = New-ScheduledTaskTrigger -AtLogon
+    $TaskTrigger = @(
+        New-ScheduledTaskTrigger -AtStartup
+        New-ScheduledTaskTrigger -AtLogon
+    )
     $TaskScriptArgs = "-IdleThresholdMinutes $IdleLogoffTimeoutMinutes"
     $TaskAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-executionpolicy bypass -file $TaskScriptFullName $TaskScriptArgs"
     $TaskPrincipal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
