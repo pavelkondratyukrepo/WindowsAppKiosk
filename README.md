@@ -19,16 +19,16 @@ This custom kiosk could be used for numerous scenarios including secure remote a
 
 ## Prerequisites
 
-1. A currently [supported version of Windows 11](https://learn.microsoft.com/en-us/windows/release-health/supported-versions-windows-client) with the choice of the following editions based on the `WindowsAppShell` parameter.
+1. A currently [supported version of Windows](https://learn.microsoft.com/en-us/windows/release-health/supported-versions-windows-client) with the choice of the following editions and versions based on the `WindowsAppShell` parameter.
 
    1. When the `WindowsAppShell` parameter is specified, then the following editions are supported [^1]:
-      - Education
-      - Enterprise
-      - Enterprise LTSC
-      - IoT Enterprise
-      - IoT Enterprise LTSC
+      - Windows 11 Education
+      - Windows 11 Enterprise
+      - Windows 10/11 Enterprise LTSC
+      - Windows 10/11 IoT Enterprise
+      - Windows 10/11 IoT Enterprise LTSC
 
-   2. When the `WindowsAppShell` parameter is not specified, then the following editions are supported [^2]:
+   2. When the `WindowsAppShell` parameter is <u>not</u> specified, then the following editions of <b>Windows 11</b> are supported [^2]:
       - Education
       - Enterprise
       - Enterprise LTSC
@@ -51,10 +51,10 @@ The user interface experience is determined by several factors and parameters. T
 
 | AutoLogonKiosk | WindowsAppShell | User Interface |
 |:--------------:|:---------------:|----------------|
-| True           | True            | The Windows App replaces the explorer shell via Shell Launcher kiosk mode. Windows 11 will automatically logon with the 'KioskUser0' account. The user will be presented with the Windows App interface to connect to their Azure Virtual Desktop resources. |
-| False          | True            | The Windows App replaces the explorer shell via Shell Launcher kiosk mode. The user will sign-in to the device using Entra ID credentials and will be automatically presented with the Windows App. |
-| True           | False           | A Multi-App Kiosk configuration is applied via Assigned Access which locks down the explorer interface to only show the Windows App and optionally Settings. Windows 11 will automatically logon with the 'KioskUser0' account. The user will be presented with a restricted Start menu containing only the Windows App. |
 | False          | False           | *This is the default configuration if no parameters are specified.* A Multi-App Kiosk configuration is applied via Assigned Access which locks down the explorer interface to only show the Windows App and optionally Settings. The user will sign-in to the device using Entra ID credentials and will be automatically presented with a restricted interface showing only approved applications. |
+| True           | False           | A Multi-App Kiosk configuration is applied via Assigned Access which locks down the explorer interface to only show the Windows App and optionally Settings. Windows 11 will automatically logon with the 'KioskUser0' account. The user will be presented with a restricted Start menu containing only the Windows App. |
+| True           | True            | The Windows App replaces the explorer shell via Shell Launcher kiosk mode. Windows will automatically logon with the 'KioskUser0' account. The user will be presented with the Windows App interface to connect to their Azure Virtual Desktop resources. |
+| False          | True            | The Windows App replaces the explorer shell via Shell Launcher kiosk mode. The user will sign-in to the device using Entra ID credentials and will be automatically presented with the Windows App. |
 
 ### Sign-In Flow Details
 
@@ -133,6 +133,7 @@ The table below describes each parameter and any requirements or usage informati
 | `SharedPC` | Switch | Determines if the computer is setup as a shared PC with automatic profile cleanup after logoff. | Only valid for direct logon mode (i.e., The `AutoLogonKiosk` switch is not used). |
 | `ShowSettings` | Switch | Determines if the Settings App appears in the restricted interface, limited to display and audio settings. | Only valid when `WindowsAppShell` is not specified. |
 | `IdleLockTimeoutMinutes` | Int | Determines the number of minutes of idle time before the lock screen is displayed. | Only valid when `AutoLogonKiosk` is not used. Must be at least 15 minutes less than other idle timeout parameters when used together. Valid range: 5-60 minutes. |
+| `IdleLogoffTimemoutMinutes` | Int | Determines the number of minutes of idle time before the user is logged off automatically. | Only valid when `AutoLogonKiosk` is not used. Must be at least 15 minutes less than the `IdleSleepTimeoutMinutes` if that is specified. Valid range: 5-480 minutes. |
 | `SmartCardRemovalAction` | String | Determines what occurs when the smart card used for authentication is removed. | Possible values: 'Lock', 'Logoff'. Cannot be used when `AutoLogonKiosk` is true. |
 | `ConfigureAutomaticMaintenance` | Switch | Determines if Windows automatic maintenance settings are configured via Local Group Policy. | When enabled, maintenance tasks will run at the specified time with optional random delay. [^3] |
 | `MaintenanceActivationTime` | String | Specifies the time of day when automatic maintenance should begin in HH:mm:ss format. | Example: "02:00:00" for 2:00 AM. Default is "00:00:00" (midnight). [^3] |

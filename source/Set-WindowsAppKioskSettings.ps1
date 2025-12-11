@@ -195,22 +195,22 @@ If ($SetPowerPolicies -and $null -eq $IdleSleepTimeoutMinutes) {
 } 
 
 # Validate idle timeout parameter ordering: IdleLockTimeoutMinutes < IdleLogoffTimeoutMinutes < IdleSleepTimeoutMinutes
-# Ensure minimum 5-minute gap between each timeout level
+# Ensure minimum 15-minute gap between each timeout level
 
 If ($IdleLockTimeoutMinutes -and $IdleLogoffTimeoutMinutes) {
-    If ($IdleLogoffTimeoutMinutes -lt ($IdleLockTimeoutMinutes + 5)) {
-        Throw "IdleLogoffTimeoutMinutes ($IdleLogoffTimeoutMinutes) must be at least 5 minutes greater than IdleLockTimeoutMinutes ($IdleLockTimeoutMinutes)."
+    If ($IdleLogoffTimeoutMinutes -lt ($IdleLockTimeoutMinutes + 15)) {
+        Throw "IdleLogoffTimeoutMinutes ($IdleLogoffTimeoutMinutes) must be at least 15 minutes greater than IdleLockTimeoutMinutes ($IdleLockTimeoutMinutes)."
     }
 }
 
 If ($IdleLogoffTimeoutMinutes -and $IdleSleepTimeoutMinutes) {
-    If ($IdleSleepTimeoutMinutes -lt ($IdleLogoffTimeoutMinutes + 5)) {
-        Throw "IdleSleepTimeoutMinutes ($IdleSleepTimeoutMinutes) must be at least 5 minutes greater than IdleLogoffTimeoutMinutes ($IdleLogoffTimeoutMinutes)."
+    If ($IdleSleepTimeoutMinutes -lt ($IdleLogoffTimeoutMinutes + 15)) {
+        Throw "IdleSleepTimeoutMinutes ($IdleSleepTimeoutMinutes) must be at least 15 minutes greater than IdleLogoffTimeoutMinutes ($IdleLogoffTimeoutMinutes)."
     }
 }
 
 If ($IdleLockTimeoutMinutes -and $IdleSleepTimeoutMinutes) {
-    $Gap = If ($IdleLogoffTimeoutMinutes) { 10 } Else { 5 }
+    $Gap = If ($IdleLogoffTimeoutMinutes) { 30 } Else { 15 }
     If ($IdleSleepTimeoutMinutes -lt ($IdleLockTimeoutMinutes + $Gap)) {
         Throw "IdleSleepTimeoutMinutes ($IdleSleepTimeoutMinutes) must be at least $Gap minutes greater than IdleLockTimeoutMinutes ($IdleLockTimeoutMinutes)."
     }
@@ -268,7 +268,6 @@ $DirTools = Join-Path -Path $Script:Dir -ChildPath "Tools"
 $DirUserLogos = Join-Path -Path $Script:Dir -ChildPath "UserLogos"
 $DirFunctions = Join-Path -Path $Script:Dir -ChildPath "Scripts\Functions"
 $DirSchedTasksScripts = Join-Path -Path $Script:Dir -ChildPath "Scripts\ScheduledTasks"
-
 
 #region Parameter Conversions
 
