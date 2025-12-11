@@ -80,6 +80,9 @@ then the Settings app and Control Panel are not displayed or accessible.
 .PARAMETER IdleLockTimeoutMinutes
 This integer value determines the number of minutes of idle time before the lock screen is displayed. This parameter is only valid when the AutoLogonKiosk switch parameter is not used. When used with other idle timeout parameters, this must be at least 15 minutes less than IdleLogoffTimeoutMinutes and IdleSleepTimeoutMinutes.
 
+.PARAMETER IdleLogoffTimeoutMinutes
+This integer value determines the number of minutes of idle time before the user is automatically logged off. This parameter is only valid when the AutoLogonKiosk switch parameter is not used. When used with other idle timeout parameters, this must be at least 15 minutes greater than IdleLockTimeoutMinutes and at least 15 minutes less than IdleSleepTimeoutMinutes.
+
 .PARAMETER SmartCardRemovalAction   
 This string parameter determines what occurs when the smart card that was used to authenticate to the operating system is removed from the system. The possible values are 'Lock' or 'Logoff'.
 When AutoLogon is true, this parameter cannot be used.
@@ -127,6 +130,11 @@ param (
     [Parameter(ParameterSetName = 'DirectLogonMultiAppKiosk')]
     [ValidateRange(5, 60)]    
     [int]$IdleLockTimeoutMinutes,
+
+    [Parameter(ParameterSetName = 'DirectLogonShellLauncher')]
+    [Parameter(ParameterSetName = 'DirectLogonMultiAppKiosk')]
+    [ValidateRange(5, 180)]    
+    [int]$IdleLogoffTimeoutMinutes,
     
     [Parameter(ParameterSetName = 'DirectLogonShellLauncher')]
     [Parameter(ParameterSetName = 'DirectLogonMultiAppKiosk')]
@@ -186,12 +194,25 @@ If ($SetPowerPolicies -and $null -eq $IdleSleepTimeoutMinutes) {
     Throw "You must specify a value for 'IdleSleepTimeoutMinutes' when 'SetPowerPolicies' is used"
 } 
 
-# Validate idle timeout parameter ordering: IdleLockTimeoutMinutes < IdleSleepTimeout
+# Validate idle timeout parameter ordering: IdleLockTimeoutMinutes < IdleLogoffTimeoutMinutes < IdleSleepTimeoutMinutes
 # Ensure minimum 15-minute gap between each timeout level
 
+If ($IdleLockTimeoutMinutes -and $IdleLogoffTimeoutMinutes) {
+    If ($IdleLogoffTimeoutMinutes -lt ($IdleLockTimeoutMinutes + 15)) {
+        Throw "IdleLogoffTimeoutMinutes ($IdleLogoffTimeoutMinutes) must be at least 15 minutes greater than IdleLockTimeoutMinutes ($IdleLockTimeoutMinutes)."
+    }
+}
+
+If ($IdleLogoffTimeoutMinutes -and $IdleSleepTimeoutMinutes) {
+    If ($IdleSleepTimeoutMinutes -lt ($IdleLogoffTimeoutMinutes + 15)) {
+        Throw "IdleSleepTimeoutMinutes ($IdleSleepTimeoutMinutes) must be at least 15 minutes greater than IdleLogoffTimeoutMinutes ($IdleLogoffTimeoutMinutes)."
+    }
+}
+
 If ($IdleLockTimeoutMinutes -and $IdleSleepTimeoutMinutes) {
-    If ($IdleSleepTimeoutMinutes -lt ($IdleLockTimeoutMinutes + 15)) {
-        Throw "IdleSleepTimeoutMinutes ($IdleSleepTimeoutMinutes) must be at least 15 minutes greater than IdleLockTimeoutMinutes ($IdleLockTimeoutMinutes). Minimum required: $($IdleLockTimeoutMinutes + 15)"
+    $Gap = If ($IdleLogoffTimeoutMinutes) { 30 } Else { 15 }
+    If ($IdleSleepTimeoutMinutes -lt ($IdleLockTimeoutMinutes + $Gap)) {
+        Throw "IdleSleepTimeoutMinutes ($IdleSleepTimeoutMinutes) must be at least $Gap minutes greater than IdleLockTimeoutMinutes ($IdleLockTimeoutMinutes)."
     }
 } 
 
@@ -248,7 +269,6 @@ $DirUserLogos = Join-Path -Path $Script:Dir -ChildPath "UserLogos"
 $DirFunctions = Join-Path -Path $Script:Dir -ChildPath "Scripts\Functions"
 $DirSchedTasksScripts = Join-Path -Path $Script:Dir -ChildPath "Scripts\ScheduledTasks"
 
-
 #region Parameter Conversions
 
 # Convert MaintenanceRandomDelay integer to PT4H format
@@ -288,6 +308,10 @@ If (-not [System.Diagnostics.EventLog]::SourceExists($EventSource) -or -not [Sys
     Do {
         Start-Sleep -Seconds 1
     } Until ([System.Diagnostics.EventLog]::SourceExists($EventSource) -and [System.Diagnostics.EventLog]::Exists($EventLog))
+}
+
+If (-not [System.Diagnostics.EventLog]::SourceExists('AutoLogoff')) {
+    New-EventLog -LogName $EventLog -Source 'AutoLogoff' -ErrorAction SilentlyContinue
 }
 
 $message = @"
@@ -384,13 +408,12 @@ If ($WindowsAppShell) {
         $ConfigFile = Join-Path -Path $DirShellLauncherSettings -ChildPath "WindowsApp.xml"
         Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 51 -Message "Enabling Windows App Shell Launcher via WMI MDM bridge. This could take several minutes."
     }
-    $DestFile = Join-Path -Path $DirKiosk -ChildPath "AssignedAccessShellLauncher.xml"
-    Copy-Item -Path $ConfigFile -Destination $DestFile -Force
-    Set-AssignedAccessShellLauncher -FilePath $DestFile
-    $ShellLauncher = Get-AssignedAccessShellLauncher
-    $FormattedShellLauncher = Format-OutputXml -Configuration $ShellLauncher
-    If ($ShellLauncher) {
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 52 -Message "Shell Launcher configuration successfully applied.`n-----BEGIN CONFIGURATION-----`n$FormattedShellLauncher`n-----END CONFIGURATION-----"
+    $XmlFile = Join-Path -Path $DirKiosk -ChildPath "AssignedAccessShellLauncher.xml"
+    Copy-Item -Path $ConfigFile -Destination $XmlFile -Force
+    Set-AssignedAccessShellLauncher -FilePath $XmlFile
+    If (Get-AssignedAccessShellLauncher) {
+        [xml]$Xml = Get-Content -Path $XmlFile
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 52 -Message "Shell Launcher configuration successfully applied.`n-----BEGIN CONFIGURATION-----`n$Xml`n-----END CONFIGURATION-----"
     }
     Else {
         Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Error -EventId 53 -Message "Shell Launcher configuration failed. Computer should be restarted first."
@@ -418,13 +441,23 @@ Else {
             $ConfigFile = Join-Path -Path $DirMultiAppSettings -ChildPath "WindowsApp.xml"
         }
     }  
-    $DestFile = Join-Path $DirKiosk -ChildPath 'AssignedAccessConfiguration.xml'
-    Copy-Item -Path $ConfigFile -Destination $DestFile -Force
-    Set-AssignedAccessConfiguration -FilePath $DestFile
-    $Configuration = Get-AssignedAccessConfiguration
-    If ($Configuration) {
-        $FormattedConfiguration = Format-OutputXml -Configuration $Configuration
-        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 58 -Message "Assigned Access configuration successfully applied.`n-----BEGIN CONFIGURATION-----`n$FormattedConfiguration`n-----END CONFIGURATION-----"
+    $XmlPath = Join-Path $DirKiosk -ChildPath 'AssignedAccessConfiguration.xml'
+    Copy-Item -Path $ConfigFile -Destination $XmlPath -Force
+    If ($IdleLogoffTimeoutMinutes) {
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 135 -Message "Adding PowerShell to Allowed Apps in Assigned Access Configuration."
+        [xml]$Xml = Get-Content -Path $XmlPath
+        $NsMgr = New-Object System.Xml.XmlNamespaceManager($Xml.NameTable)
+        $NsMgr.AddNamespace("ns", "http://schemas.microsoft.com/AssignedAccess/2017/config")            
+        $AllowedApps = $Xml.SelectSingleNode("//ns:AllowedApps", $NsMgr)        
+        $PowerShellApp = $Xml.CreateElement("App", "http://schemas.microsoft.com/AssignedAccess/2017/config")
+        $PowerShellApp.SetAttribute("DesktopAppPath", "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe")
+        $AllowedApps.AppendChild($PowerShellApp) | Out-Null                    
+        $Xml.Save($XmlPath)
+    }
+    Set-AssignedAccessConfiguration -FilePath $XmlPath
+    If (Get-AssignedAccessConfiguration) {
+        [xml]$Xml = Get-Content -Path $XmlPath
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 58 -Message "Assigned Access configuration successfully applied.`n-----BEGIN CONFIGURATION-----`n$Xml`n-----END CONFIGURATION-----"
     }
     Else {
         Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Error -EventId 59 -Message "Assigned Access configuration failed. Computer should be restarted first."
@@ -796,6 +829,45 @@ if ($WindowsAppShell) {
 }
 
 #endregion Keyboard Filter
+
+#region Idle Logoff Configuration
+
+If ($IdleLogoffTimeoutMinutes) {
+    $IdleWaitTimeoutSeconds = $IdleLogoffTimeoutMinutes * 60
+    $Source = 'AutoLogoff'
+    # Create Event Log Source for AutoLogoff
+    If (-not [System.Diagnostics.EventLog]::SourceExists($Source)) {
+        New-EventLog -LogName $EventLog -Source $Source -ErrorAction SilentlyContinue
+    }
+    # Create Scheduled Task for Idle Logoff
+    $TaskName = "Windows-App-Kiosk - Idle Logoff"
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 130 -Message "Creating Scheduled Task: '$TaskName' with $IdleLogoffTimeoutMinutes minutes idle timeout." 
+    # Copy script
+    If (-not (Test-Path -Path $SchedTasksScriptsDir)) {
+        New-Item -Path $SchedTasksScriptsDir -ItemType Directory -Force | Out-Null
+    }
+    $TaskScriptName = 'Logoff-Idle.ps1'
+    Copy-Item -Path (Join-Path -Path $DirSchedTasksScripts -ChildPath $TaskScriptName) -Destination $SchedTasksScriptsDir -Force
+    $TaskScriptFullName = Join-Path -Path $SchedTasksScriptsDir -ChildPath $TaskScriptName
+    
+    # Create Task Action
+    $TaskAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$TaskScriptFullName`" -IdleWaitTimeoutSeconds $IdleWaitTimeoutSeconds -EventLog `"$EventLog`" -EventSource `"$Source`""
+    
+    # Create Task Principal (BUILTIN\Users)
+    $TaskPrincipal = New-ScheduledTaskPrincipal -GroupId 'S-1-5-32-545' -RunLevel Limited
+
+    # Create Task Settings
+    $TaskSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -RestartOnIdle -RunOnlyIfIdle -IdleWaitTimeout (New-TimeSpan -Hours 24) -IdleDuration (New-TimeSpan -Minutes 1)
+    # Create Idle Trigger
+    # Note: New-ScheduledTaskTrigger does not support Idle triggers directly. Using CIM instance.
+    $TriggerClass = Get-CimClass -ClassName MSFT_TaskIdleTrigger -Namespace "Root/Microsoft/Windows/TaskScheduler"
+    $TaskTrigger = $TriggerClass | New-CimInstance -ClientOnly
+    
+    # Register Task
+    Register-ScheduledTask -TaskName $TaskName -Description "Logs off the user after a period of inactivity." -Action $TaskAction -Settings $TaskSettings -Principal $TaskPrincipal -Trigger $TaskTrigger -Force | Out-Null
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 131 -Message "Scheduled Task '$TaskName' created."
+}
+#endregion Idle Logoff Configuration
 
 Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 150 -Message "Updating Group Policy"
 $GPUpdate = Start-Process -FilePath 'GPUpdate' -ArgumentList '/force' -Wait -PassThru
