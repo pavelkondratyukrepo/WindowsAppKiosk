@@ -857,7 +857,7 @@ If ($IdleLogoffTimeoutMinutes) {
     $TaskPrincipal = New-ScheduledTaskPrincipal -GroupId 'S-1-5-32-545' -RunLevel Limited
 
     # Create Task Settings
-    $TaskSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -RestartOnIdle -RunOnlyIfIdle -IdleWaitTimeout (New-TimeSpan -Days 365) -IdleDuration (New-TimeSpan -Seconds 0)
+    $TaskSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -RestartOnIdle -RunOnlyIfIdle -IdleWaitTimeout (New-TimeSpan -Hours 24) -IdleDuration (New-TimeSpan -Seconds 60)
     # Create Idle Trigger
     # Note: New-ScheduledTaskTrigger does not support Idle triggers directly. Using CIM instance.
     $TriggerClass = Get-CimClass -ClassName MSFT_TaskIdleTrigger -Namespace "Root/Microsoft/Windows/TaskScheduler"
