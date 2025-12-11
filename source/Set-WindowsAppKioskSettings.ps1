@@ -849,7 +849,7 @@ If ($IdleLogoffTimeoutMinutes) {
     $TaskScriptName = 'Logoff-Idle.ps1'
     Copy-Item -Path (Join-Path -Path $DirSchedTasksScripts -ChildPath $TaskScriptName) -Destination $SchedTasksScriptsDir -Force
     $TaskScriptFullName = Join-Path -Path $SchedTasksScriptsDir -ChildPath $TaskScriptName
-
+    
     # Create Task Action
     $TaskAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$TaskScriptFullName`" -IdleWaitTimeoutSeconds $IdleWaitTimeoutSeconds -EventLog `"$EventLog`" -EventSource `"$Source`""
     
@@ -857,7 +857,7 @@ If ($IdleLogoffTimeoutMinutes) {
     $TaskPrincipal = New-ScheduledTaskPrincipal -GroupId 'S-1-5-32-545' -RunLevel Limited
 
     # Create Task Settings
-    $TaskSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -RestartOnIdle -RunOnlyIfIdle -IdleWaitTimeout (New-TimeSpan -Hours 24) -IdleDuration (New-TimeSpan -Seconds 60)
+    $TaskSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -RestartOnIdle -RunOnlyIfIdle -IdleWaitTimeout (New-TimeSpan -Hours 24) -IdleDuration (New-TimeSpan -Minutes 1)
     # Create Idle Trigger
     # Note: New-ScheduledTaskTrigger does not support Idle triggers directly. Using CIM instance.
     $TriggerClass = Get-CimClass -ClassName MSFT_TaskIdleTrigger -Namespace "Root/Microsoft/Windows/TaskScheduler"
