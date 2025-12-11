@@ -833,9 +833,11 @@ if ($WindowsAppShell) {
 #region Idle Logoff Configuration
 
 If ($IdleLogoffTimeoutMinutes) {
+    $IdleWaitTimeoutSeconds = $IdleLogoffTimeoutMinutes * 60
+    $Source = 'AutoLogoff'
     # Create Event Log Source for AutoLogoff
-    If (-not [System.Diagnostics.EventLog]::SourceExists('AutoLogoff')) {
-        New-EventLog -LogName $EventLog -Source 'AutoLogoff' -ErrorAction SilentlyContinue
+    If (-not [System.Diagnostics.EventLog]::SourceExists($Source)) {
+        New-EventLog -LogName $EventLog -Source $Source -ErrorAction SilentlyContinue
     }
     # Create Scheduled Task for Idle Logoff
     $TaskName = "Windows-App-Kiosk - Idle Logoff"
@@ -849,18 +851,18 @@ If ($IdleLogoffTimeoutMinutes) {
     $TaskScriptFullName = Join-Path -Path $SchedTasksScriptsDir -ChildPath $TaskScriptName
 
     # Create Task Action
-    $TaskAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$TaskScriptFullName`" -IdleWaitTimeoutSeconds 5"
+    $TaskAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$TaskScriptFullName`" -IdleWaitTimeoutSeconds $IdleWaitTimeoutSeconds -EventLog `"$EventLog`" -EventSource `"$Source`""
     
     # Create Task Principal (BUILTIN\Users)
-    $TaskPrincipal = New-ScheduledTaskPrincipal -GroupId 'S-1-5-32-545' -RunLevel LeastPrivilege
+    $TaskPrincipal = New-ScheduledTaskPrincipal -GroupId 'S-1-5-32-545' -RunLevel Limited
 
     # Create Task Settings
-    $TaskSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -RestartOnIdle -RunOnlyIfIdle -IdleWaitTimeout (New-TimeSpan -Hours 24)
+    $TaskSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -RestartOnIdle -RunOnlyIfIdle -IdleWaitTimeout (New-TimeSpan -Days 365) -IdleDuration (New-TimeSpan -Seconds 0)
     # Create Idle Trigger
     # Note: New-ScheduledTaskTrigger does not support Idle triggers directly. Using CIM instance.
-    $TaskTrigger = New-CimInstance -ClassName MSFT_TaskIdleTrigger -Namespace "Root/Microsoft/Windows/TaskScheduler" -ClientOnly
-    $TaskTrigger.Enabled = $true
-
+    $TriggerClass = Get-CimClass -ClassName MSFT_TaskIdleTrigger -Namespace "Root/Microsoft/Windows/TaskScheduler"
+    $TaskTrigger = $TriggerClass | New-CimInstance -ClientOnly
+    
     # Register Task
     Register-ScheduledTask -TaskName $TaskName -Description "Logs off the user after a period of inactivity." -Action $TaskAction -Settings $TaskSettings -Principal $TaskPrincipal -Trigger $TaskTrigger -Force | Out-Null
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 131 -Message "Scheduled Task '$TaskName' created."
