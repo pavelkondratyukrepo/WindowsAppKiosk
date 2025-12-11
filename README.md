@@ -25,7 +25,7 @@ This custom kiosk could be used for numerous scenarios including secure remote a
       - Windows 11 Education
       - Windows 11 Enterprise
       - Windows 10/11 Enterprise LTSC
-      - Windows 10/11 IoT Enterprise
+      - Windows 11 IoT Enterprise
       - Windows 10/11 IoT Enterprise LTSC
 
    2. When the `WindowsAppShell` parameter is <u>not</u> specified, then the following editions of <b>Windows 11</b> are supported [^2]:
