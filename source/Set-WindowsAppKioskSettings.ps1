@@ -197,6 +197,10 @@ If ($SetPowerPolicies -and $null -eq $IdleSleepTimeoutMinutes) {
 # Validate idle timeout parameter ordering: IdleLockTimeoutMinutes < IdleLogoffTimeoutMinutes < IdleSleepTimeoutMinutes
 # Ensure minimum 15-minute gap between each timeout level
 
+If ($IdleLogoffTimeoutMinutes -and -not $IdleLockTimeoutMinutes) {
+    Throw "IdleLogoffTimeoutMinutes requires IdleLockTimeoutMinutes to be specified."
+}
+
 If ($IdleLockTimeoutMinutes -and $IdleLogoffTimeoutMinutes) {
     If ($IdleLogoffTimeoutMinutes -lt ($IdleLockTimeoutMinutes + 15)) {
         Throw "IdleLogoffTimeoutMinutes ($IdleLogoffTimeoutMinutes) must be at least 15 minutes greater than IdleLockTimeoutMinutes ($IdleLockTimeoutMinutes)."
@@ -833,7 +837,8 @@ if ($WindowsAppShell) {
 #region Idle Logoff Configuration
 
 If ($IdleLogoffTimeoutMinutes) {
-    $IdleWaitTimeoutSeconds = $IdleLogoffTimeoutMinutes * 60
+    # Calculate the wait time as the difference between logoff and lock timeouts
+    $IdleWaitTimeoutSeconds = ($IdleLogoffTimeoutMinutes - $IdleLockTimeoutMinutes) * 60
     $Source = 'AutoLogoff'
     # Create Event Log Source for AutoLogoff
     If (-not [System.Diagnostics.EventLog]::SourceExists($Source)) {
@@ -841,7 +846,7 @@ If ($IdleLogoffTimeoutMinutes) {
     }
     # Create Scheduled Task for Idle Logoff
     $TaskName = "Windows-App-Kiosk - Idle Logoff"
-    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 130 -Message "Creating Scheduled Task: '$TaskName' with $IdleLogoffTimeoutMinutes minutes idle timeout." 
+    Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 130 -Message "Creating Scheduled Task: '$TaskName' to logoff $IdleWaitTimeoutSeconds seconds after screen lock." 
     # Copy script
     If (-not (Test-Path -Path $SchedTasksScriptsDir)) {
         New-Item -Path $SchedTasksScriptsDir -ItemType Directory -Force | Out-Null
@@ -856,15 +861,18 @@ If ($IdleLogoffTimeoutMinutes) {
     # Create Task Principal (BUILTIN\Users)
     $TaskPrincipal = New-ScheduledTaskPrincipal -GroupId 'S-1-5-32-545' -RunLevel Limited
 
-    # Create Task Settings
-    $TaskSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -RestartOnIdle -RunOnlyIfIdle -IdleWaitTimeout (New-TimeSpan -Hours 24) -IdleDuration (New-TimeSpan -Minutes 1)
-    # Create Idle Trigger
-    # Note: New-ScheduledTaskTrigger does not support Idle triggers directly. Using CIM instance.
-    $TriggerClass = Get-CimClass -ClassName MSFT_TaskIdleTrigger -Namespace "Root/Microsoft/Windows/TaskScheduler"
-    $TaskTrigger = $TriggerClass | New-CimInstance -ClientOnly
+    # Create Task Settings - Allow parallel instances for multiple users
+    $TaskSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -MultipleInstances Parallel
+    
+    # Create Session State Change Trigger for Workstation Lock (StateChange = 7)
+    $TriggerClass = Get-CimClass -ClassName MSFT_TaskSessionStateChangeTrigger -Namespace "Root/Microsoft/Windows/TaskScheduler"
+    $TaskTrigger = New-CimInstance -CimClass $TriggerClass -ClientOnly -Property @{
+        StateChange = 7  # Session Lock
+        Enabled = $true
+    }
     
     # Register Task
-    Register-ScheduledTask -TaskName $TaskName -Description "Logs off the user after a period of inactivity." -Action $TaskAction -Settings $TaskSettings -Principal $TaskPrincipal -Trigger $TaskTrigger -Force | Out-Null
+    Register-ScheduledTask -TaskName $TaskName -Description "Logs off the user after a period of inactivity following screen lock." -Action $TaskAction -Settings $TaskSettings -Principal $TaskPrincipal -Trigger $TaskTrigger -Force | Out-Null
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 131 -Message "Scheduled Task '$TaskName' created."
 }
 #endregion Idle Logoff Configuration
