@@ -36,7 +36,7 @@ public class SessionChecker {
 }
 "@
 
-Write-EventLog -LogName $EventLog -Source $EventSource -EventId 1000 -EntryType Information -Message "Screen locked. Waiting $IdleWaitTimeoutSeconds seconds before logoff."
+Write-EventLog -LogName $EventLog -Source $EventSource -EventId 1000 -EntryType Information -Message "'$env:UserName' screen locked. Waiting $IdleWaitTimeoutSeconds seconds before logoff."
 
 # Sleep in intervals and check if session is still locked
 $CheckInterval = 30 # Check every 30 seconds
@@ -49,11 +49,11 @@ while ($ElapsedSeconds -lt $IdleWaitTimeoutSeconds) {
 
     # Check if session is still locked
     if (-not [SessionChecker]::IsSessionLocked()) {
-        Write-EventLog -LogName $EventLog -Source $EventSource -EventId 1002 -EntryType Information -Message "Session unlocked. Canceling logoff."
+        Write-EventLog -LogName $EventLog -Source $EventSource -EventId 1002 -EntryType Information -Message "'$env:UserName' Session unlocked. Canceling logoff."
         exit 0
     }
 }
 
-Write-EventLog -LogName $EventLog -Source $EventSource -EventId 1001 -EntryType Information -Message "Logoff initiated due to inactivity."
+Write-EventLog -LogName $EventLog -Source $EventSource -EventId 1001 -EntryType Information -Message "'$env:UserName' logoff initiated due to inactivity."
 
 & logoff.exe
