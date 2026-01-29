@@ -1,4 +1,4 @@
-# Azure Virtual Desktop Client Kiosk Solutions
+# Azure Virtual Desktop and Windows 365 Client Kiosk Solutions
 
 ## Introduction
 
