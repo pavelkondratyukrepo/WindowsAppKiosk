@@ -15,7 +15,7 @@ $Script:File = $MyInvocation.MyCommand.Name
 $Script:Name=[System.IO.Path]::GetFileNameWithoutExtension($Script:File)
 $Script:Args = $null
 $Script:LogDir = Join-Path -Path "$Env:SystemRoot\Logs" -ChildPath 'Software'
-$Script:TempDir = "$env:SystemRoot\SystemTemp"
+$Script:DownloadDir = "$env:SystemRoot\SystemTemp"
 
 If ($ENV:PROCESSOR_ARCHITEW6432 -eq "AMD64") {
     Try {
@@ -661,7 +661,7 @@ If ($DeploymentType -ne 'UnInstall') {
     Else {
         Write-Output "Remote Desktop MSI package not found in $PSScriptRoot"
         Write-Output "Attempting to download from '$downloadUrl'"
-        $tempDir = Join-Path -Path $Script:TempDir -ChildPath "$($Script:Name)"
+        $tempDir = Join-Path -Path $Script:DownloadDir -ChildPath "$($Script:Name)"
         New-Item -Path $tempDir -ItemType Directory -Force | Out-Null
         $pathMSI = Get-InternetFile -url $downloadUrl -OutputDirectory $tempDir
         If (-not (Test-Path -Path $pathMSI)) {

@@ -5,7 +5,7 @@
 [uri]$SoftwareDownloadUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
 [string]$ref = 'https://docs.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files?view=msvc-170#install-the-redistributable-packages'
 [string]$InstallArguments = "/install /quiet /norestart"
-[string]$Script:TempDir = "$env:SystemRoot\SystemTemp"
+[string]$Script:DownloadDir = "$env:SystemRoot\SystemTemp"
 # Logging Configuration
 [String]$Script:LogDir = "$($env:SystemRoot)\Logs\Software"
 [string]$Script:LogName = $SoftwareVendor + "_" + $SoftwareName + "_Install.log"
@@ -113,7 +113,7 @@ If ($LocalExe) {
 Else {
     Write-Output "Visual C++ Redistributables EXE package not found in $PSScriptRoot"
     Write-Output "Attempting to download from '$SoftwareDownloadUrl'"
-    $tempDir = Join-Path -Path $Script:TempDir -ChildPath $SoftwareName
+    $tempDir = Join-Path -Path $Script:DownloadDir -ChildPath $SoftwareName
     New-Item -Path $tempDir -ItemType Directory -Force | Out-Null
     $pathExe = Get-InternetFile -url $SoftwareDownloadUrl -OutputDirectory $tempDir
     If (-not (Test-Path -Path $pathExe)) {
