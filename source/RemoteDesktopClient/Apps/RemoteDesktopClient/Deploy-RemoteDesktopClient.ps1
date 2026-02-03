@@ -14,8 +14,8 @@ $Script:FullName = $MyInvocation.MyCommand.Path
 $Script:File = $MyInvocation.MyCommand.Name
 $Script:Name=[System.IO.Path]::GetFileNameWithoutExtension($Script:File)
 $Script:Args = $null
-$Script:LogDir = Join-Path -Path "$Env:SystemRoot\Logs" -ChildPath 'Software'
-$Script:DownloadDir = "$env:SystemRoot\SystemTemp"
+$Script:LogDir = Join-Path -Path (Join-Path -Path $Env:SystemRoot -ChildPath "Logs") -ChildPath 'Software'
+$Script:TempDir = Join-Path -Path (Join-Path -Path $env:SystemRoot -ChildPath 'SystemTemp') -ChildPath ($SoftwareName -Replace ' ','')
 
 If ($ENV:PROCESSOR_ARCHITEW6432 -eq "AMD64") {
     Try {
@@ -42,7 +42,6 @@ If ($ENV:PROCESSOR_ARCHITEW6432 -eq "AMD64") {
     Exit
 }
 
-[String]$Script:LogDir = "$($env:SystemRoot)\Logs\Software"
 If (-not(Test-Path -Path $Script:LogDir)) {
     New-Item -Path $Script:LogDir -ItemType Dir -Force | Out-Null
 }
@@ -661,9 +660,8 @@ If ($DeploymentType -ne 'UnInstall') {
     Else {
         Write-Output "Remote Desktop MSI package not found in $PSScriptRoot"
         Write-Output "Attempting to download from '$downloadUrl'"
-        $tempDir = Join-Path -Path $Script:DownloadDir -ChildPath "$($Script:Name)"
-        New-Item -Path $tempDir -ItemType Directory -Force | Out-Null
-        $pathMSI = Get-InternetFile -url $downloadUrl -OutputDirectory $tempDir
+        New-Item -Path $Script:TempDir -ItemType Directory -Force | Out-Null
+        $pathMSI = Get-InternetFile -url $downloadUrl -OutputDirectory $Script:TempDir
         If (-not (Test-Path -Path $pathMSI)) {
             Write-Error "Remote Desktop MSI package could not be downloaded"
             Stop-Transcript
@@ -704,7 +702,7 @@ If ($DeploymentType -ne 'UnInstall') {
     Else {
         Write-Output "'$SoftwareName' is already installed and is the current version."
         # Clean up temp directory if download was used
-        If ($tempDir -and (Test-Path -Path $tempDir)) {
+        If ($Script:TempDir -and (Test-Path -Path $Script:TempDir)) {
             Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
