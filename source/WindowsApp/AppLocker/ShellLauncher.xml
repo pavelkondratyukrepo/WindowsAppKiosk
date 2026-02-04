@@ -19,6 +19,13 @@
                 </FilePublisherCondition>
             </Exceptions>
         </FilePublisherRule>
+        <FilePublisherRule Id="d2f8c5c3-1a2e-4b3f-9c9e-111111111111" Name="Deny Microsoft Store" Description="Blocks Microsoft Store (UWP)" UserOrGroupSid="S-1-1-0" Action="Deny">
+            <Conditions>
+                <FilePublisherCondition PublisherName="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" ProductName="Microsoft.WindowsStore" BinaryName="*">
+                    <BinaryVersionRange LowSection="*" HighSection="*" />
+                </FilePublisherCondition>
+            </Conditions>
+        </FilePublisherRule>
     </RuleCollection>
     <RuleCollection Type="Dll" EnforcementMode="NotConfigured" />
     <RuleCollection Type="Exe" EnforcementMode="Enabled">

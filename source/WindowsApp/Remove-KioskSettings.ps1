@@ -160,7 +160,7 @@ If (Test-Path -Path 'HKLM:\Software\Kiosk') {
             }
         }
 
-        # Remove Applocker Configuration by clearing Applocker Policy.
+        # Restore Applocker Configuration by applying pre-script policy.
         If (Test-Path -Path $FileAppLockerRestore) {
             Write-Log -EventLog $EventLog -EventSource $EventSource -EventId 15 -EntryType Information -Message "Restoring AppLocker Policy to Default."
             Set-AppLockerPolicy -XmlPolicy $FileAppLockerRestore
