@@ -5,7 +5,7 @@
 [uri]$SoftwareDownloadUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
 [string]$ref = 'https://docs.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files?view=msvc-170#install-the-redistributable-packages'
 [string]$InstallArguments = "/install /quiet /norestart"
-[string]$Script:TempDir = "$env:SystemRoot\SystemTemp"
+[string]$Script:TempDir = Join-Path -Path (Join-Path -Path $env:SystemRoot -ChildPath 'SystemTemp') -ChildPath $SoftwareName
 # Logging Configuration
 [String]$Script:LogDir = "$($env:SystemRoot)\Logs\Software"
 [string]$Script:LogName = $SoftwareVendor + "_" + $SoftwareName + "_Install.log"
@@ -108,21 +108,18 @@ $LocalExe = Get-ChildItem -Path $PSScriptRoot -Filter *.exe -ErrorAction Silentl
 If ($LocalExe) {
     Write-Output "Visual C++ Redistributables EXE package found in $PSScriptRoot"
     $pathExe = $LocalExe.FullName
-    $UseLocal = $true
 }
 Else {
     Write-Output "Visual C++ Redistributables EXE package not found in $PSScriptRoot"
     Write-Output "Attempting to download from '$SoftwareDownloadUrl'"
-    $tempDir = Join-Path -Path $Script:TempDir -ChildPath $SoftwareName
-    New-Item -Path $tempDir -ItemType Directory -Force | Out-Null
-    $pathExe = Get-InternetFile -url $SoftwareDownloadUrl -OutputDirectory $tempDir
+    New-Item -Path $Script:TempDir -ItemType Directory -Force | Out-Null
+    $pathExe = Get-InternetFile -url $SoftwareDownloadUrl -OutputDirectory $Script:TempDir
     If (-not (Test-Path -Path $pathExe)) {
         Write-Error "Visual C++ Redistributables EXE package could not be downloaded"
         Stop-Transcript
         Exit 1
     }
     Write-Output "Visual C++ Redistributables EXE package downloaded to: $pathExe"
-    $UseLocal = $false
 }
 
 Write-Output "Starting '$SoftwareDisplayName' installation and configuration in accordance with:"
@@ -142,9 +139,9 @@ Else {
 Write-Output "Completed '$SoftwareDisplayName' Installation."
 
 # Only remove temp directory if file was downloaded (not local)
-If (-not $UseLocal -and $tempDir -and (Test-Path -Path $tempDir)) {
+If (Test-Path -Path $Script:TempDir) {
     Start-Sleep -Seconds 10
-    Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path $Script:TempDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Stop-Transcript
