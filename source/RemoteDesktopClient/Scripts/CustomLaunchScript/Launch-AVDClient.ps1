@@ -78,7 +78,7 @@ $VBScriptPath = $PSCommandPath.Replace('.ps1', '.vbs')
 [string]$EventSource
 
 Function Restart-Script {
-    Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 550 -Message "Relaunching $($MyInvocation.MyCommand.Name) after killing all processes." -ErrorAction Silently
+    Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 550 -Message "Relaunching $($MyInvocation.MyCommand.Name) after killing all processes." -ErrorAction SilentlyContinue
     $ProcessList = 'Microsoft.AAD.BrokerPlugin', 'msrdc', 'msrdcw'
     $Processes = Get-Process
     ForEach ($Process in $ProcessList) {
@@ -93,7 +93,7 @@ Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' 
 
 # Handle Client Reset in the Autologon scenario
 If ($Env:UserName -eq 'KioskUser0' -and (Test-Path -Path 'HKCU:\Software\Microsoft\RdClientRadc\Feeds')) {
-    Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 501 -Message "User Information Cached. Resetting the Remote Desktop Client."
+    Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 501 -Message "User Information Cached. Resetting the Remote Desktop Client." -ErrorAction SilentlyContinue
     Get-Process | Where-Object { $_.Name -eq 'msrdcw' } | Stop-Process -Force
     Get-Process | Where-Object { $_.Name -eq 'Microsoft.AAD.BrokerPlugin' } | Stop-Process -Force
     $reset = Start-Process -FilePath "$env:ProgramFiles\Remote Desktop\msrdcw.exe" -ArgumentList "/reset /f" -wait -PassThru
@@ -241,20 +241,23 @@ If ($SystemDisconnectAction -or $UserDisconnectSignOutAction) {
         Function Get-MSRDCProcess {
             If (Get-Process | Where-Object { $_.Name -eq 'msrdc' }) {
                 $counter = 0
-                Write-EventLog -LogName $EventLog -EventSource $EventSource -EntryType 'Information' -EventID 579 -Message 'Detected open MSRDC connections. Waiting up to 30 seconds for them to disconnect.' -ErrorAction SilentlyContinue
+                Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 579 -Message 'Detected open MSRDC connections. Waiting up to 30 seconds for them to disconnect.' -ErrorAction SilentlyContinue
                 Do {
                     $counter ++
                     Start-Sleep -Seconds 1
                 } Until ($counter -eq 30 -or ($null -eq (Get-Process | Where-Object { $_.Name -eq 'msrdc' })))
                 If ($Counter -lt 30) {
-                    Write-EventLog -LogName $EventLog -EventSource $EventSource -EntryType 'Information' -EventID 580 -Message "Open connections closed after $counter seconds." -ErrorAction SilentlyContinue
+                    Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 580 -Message "Open connections closed after $counter seconds." -ErrorAction SilentlyContinue
                     Return $false
+                }
+                Else {
+                    Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 581 -Message "MSRDC connections still open after 30 seconds." -ErrorAction SilentlyContinue
+                    Return $true
                 }
             }
             Else {
                 Return $false
             }
-            Return $true
         }
 
         If (Test-Path -Path 'HKCU:\Software\Microsoft\RdClientRadc\Feeds') { $CachePresent = $true }
@@ -287,12 +290,12 @@ If ($SystemDisconnectAction -or $UserDisconnectSignOutAction) {
             $Events = Get-WinEvent -FilterHashtable $EventFilter
             <#
                 There are three reasons that we need to reset the client in the autologon scenario.
-                Reason 1 (User Initiatiated):
-                Occurs when X is select on the RDP window.
+                Reason 1 (User Initiated):
+                Occurs when X is selected on the RDP window.
 
                 Reason 2 (User Initiated)
                 Occurs when disconnect is selected in start menu on Session Host
-                Occurs when logoff is select in session
+                Occurs when logoff is selected in session
 
                 Reason 3 (System Initiated):
                 Occurs when timeout is reached on remote host or lock is selected on remote host.
@@ -372,7 +375,15 @@ if ($IdleTimeoutAction -eq 'Logoff' -or $IdleTimeoutAction -eq 'ResetClient') {
     $timer = 0
     $interval = 30 # Check every 30 seconds
     Do {
-        if ($IdleTimeoutAction -eq 'ResetClient' -and (Test-Path -Path 'HKCU:\Software\Microsoft\RdClientRadc\Feeds') -or $IdleTimeoutAction -eq 'Logoff') {
+        $shouldMonitor = $false
+        if ($IdleTimeoutAction -eq 'ResetClient' -and (Test-Path -Path 'HKCU:\Software\Microsoft\RdClientRadc\Feeds')) {
+            $shouldMonitor = $true
+        }
+        elseif ($IdleTimeoutAction -eq 'Logoff') {
+            $shouldMonitor = $true
+        }
+        
+        if ($shouldMonitor) {
             if (-not (Get-Process | Where-Object { $_.Name -eq 'msrdc' })) {
                 If ($timer -eq 0) {
                     Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 541 -Message "No active connections found. Starting the Idle Timer" -ErrorAction SilentlyContinue
