@@ -158,14 +158,12 @@ If ($DeviceRemovalAction) {
     Get-EventSubscriber -Force | Where-Object { $_.SourceIdentifier -eq $SourceIdentifier } | Unregister-Event -Force -ErrorAction SilentlyContinue
     If ($DeviceRemovalAction -eq 'ResetClient') {
         $Action = {
-            [CmdletBinding()]
-            param (
-                [string]$EventLog,
-                [string]$EventSource
-            )
+            $EventLog = $Event.MessageData.EventLog
+            $EventSource = $Event.MessageData.EventSource
+            $VBScriptPath = $Event.MessageData.VBScriptPath
 
             Function Restart-Script {
-                Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 550 -Message "Relaunching $($MyInvocation.MyCommand.Name) after killing all processes." -ErrorAction SilentlyContinue
+                Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 550 -Message "Relaunching Launch-AVDClient.ps1 after killing all processes." -ErrorAction SilentlyContinue
                 $ProcessList = 'Microsoft.AAD.BrokerPlugin', 'msrdc', 'msrdcw'
                 $Processes = Get-Process
                 ForEach ($Process in $ProcessList) {
@@ -190,11 +188,8 @@ If ($DeviceRemovalAction) {
     }
     ElseIf ($DeviceRemovalAction -eq 'Lock') {
         $Action = {
-            [CmdletBinding()]
-            param (
-                [string]$EventLog,
-                [string]$EventSource
-            )
+            $EventLog = $Event.MessageData.EventLog
+            $EventSource = $Event.MessageData.EventSource
             $pnpEntity = $EventArgs.NewEvent.TargetInstance
             Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 525 -Message "Device Removed:`n`tCaption: $($pnpEntity.Caption)`n`tPNPDeviceID: $($pnpEntity.PNPDeviceID)`n`tManufacturer: $($pnpEntity.Manufacturer)" -ErrorAction SilentlyContinue
             Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 526 -Message "Locking the computer." -ErrorAction SilentlyContinue                  
@@ -203,36 +198,36 @@ If ($DeviceRemovalAction) {
     }
     Else {
         $Action = {
-            [CmdletBinding()]
-            param (
-                [string]$EventLog,
-                [string]$EventSource
-            )
+            $EventLog = $Event.MessageData.EventLog
+            $EventSource = $Event.MessageData.EventSource
             $pnpEntity = $EventArgs.NewEvent.TargetInstance
             Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 525 -Message "Device Removed:`n`tCaption: $($pnpEntity.Caption)`n`tPNPDeviceID: $($pnpEntity.PNPDeviceID)`n`tManufacturer: $($pnpEntity.Manufacturer)" -ErrorAction SilentlyContinue
             Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 526 -Message "Logging off the user." -ErrorAction SilentlyContinue
             Get-WmiObject -Class Win32_OperatingSystem | Invoke-WmiMethod -Name Win32Shutdown -Argument 0
         }
     }
-    Register-CimIndicationEvent -Query $Query -Action $Action -SourceIdentifier $SourceIdentifier -SupportEvent
+    $MessageData = @{
+        EventLog = $EventLog
+        EventSource = $EventSource
+        VBScriptPath = $VBScriptPath
+    }
+    Register-CimIndicationEvent -Query $Query -Action $Action -SourceIdentifier $SourceIdentifier -MessageData $MessageData -SupportEvent
 }
 
-If ($SessionDisconnectAction -or $UserDisconnectSignOutAction) {
+If ($SystemDisconnectAction -or $UserDisconnectSignOutAction) {
     Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 510 -Message "Creating WMI Event Subscription for Remote Session Disconnect." -ErrorAction SilentlyContinue
     $Query = "SELECT * FROM __InstanceCreationEvent WITHIN 5 WHERE TargetInstance ISA 'Win32_NTLogEvent' AND TargetInstance.Logfile = 'Microsoft-Windows-TerminalServices-RDPClient/Operational' AND TargetInstance.EventCode = '1026'"
     $SourceIdentifier = "Session_Disconnect_Event"
     Get-EventSubscriber -Force | Where-Object { $_.SourceIdentifier -eq $SourceIdentifier } | Unregister-Event -Force -ErrorAction SilentlyContinue
     $Action = {
-        [CmdletBinding()]
-        param (
-            [string]$EventLog,
-            [string]$EventSource,
-            [string]$SystemDisconnectAction,
-            [string]$UserDisconnectSignOutAction
-        )
+        $EventLog = $Event.MessageData.EventLog
+        $EventSource = $Event.MessageData.EventSource
+        $SystemDisconnectAction = $Event.MessageData.SystemDisconnectAction
+        $UserDisconnectSignOutAction = $Event.MessageData.UserDisconnectSignOutAction
+        $VBScriptPath = $Event.MessageData.VBScriptPath
 
         Function Restart-Script {
-            Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 550 -Message "Relaunching $($MyInvocation.MyCommand.Name) after killing all processes." -ErrorAction SilentlyContinue
+            Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 550 -Message "Relaunching Launch-AVDClient.ps1 after killing all processes." -ErrorAction SilentlyContinue
             $ProcessList = 'Microsoft.AAD.BrokerPlugin', 'msrdc', 'msrdcw'
             $Processes = Get-Process
             ForEach ($Process in $ProcessList) {
@@ -362,7 +357,14 @@ If ($SessionDisconnectAction -or $UserDisconnectSignOutAction) {
             }
         }
     }
-    Register-CimIndicationEvent -Query $Query -Action $Action -SourceIdentifier $SourceIdentifier -SupportEvent
+    $MessageData = @{
+        EventLog = $EventLog
+        EventSource = $EventSource
+        SystemDisconnectAction = $SystemDisconnectAction
+        UserDisconnectSignOutAction = $UserDisconnectSignOutAction
+        VBScriptPath = $VBScriptPath
+    }
+    Register-CimIndicationEvent -Query $Query -Action $Action -SourceIdentifier $SourceIdentifier -MessageData $MessageData -SupportEvent
 }
 
 if ($IdleTimeoutAction -eq 'Logoff' -or $IdleTimeoutAction -eq 'ResetClient') {
