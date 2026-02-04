@@ -239,23 +239,28 @@ If ($SystemDisconnectAction -or $UserDisconnectSignOutAction) {
         }
 
         Function Get-MSRDCProcess {
-            If (Get-Process | Where-Object { $_.Name -eq 'msrdc' }) {
+            Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 578 -Message "[DEBUG] Get-MSRDCProcess function called. Checking for msrdc processes..." -ErrorAction SilentlyContinue
+            $msrdcProcesses = Get-Process | Where-Object { $_.Name -eq 'msrdc' }
+            Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 578 -Message "[DEBUG] Found $($msrdcProcesses.Count) msrdc processes." -ErrorAction SilentlyContinue
+            If ($msrdcProcesses) {
                 $counter = 0
-                Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 579 -Message 'Detected open MSRDC connections. Waiting up to 30 seconds for them to disconnect.' -ErrorAction SilentlyContinue
+                Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 579 -Message "Detected $($msrdcProcesses.Count) active MSRDC connection(s). Waiting up to 30 seconds for them to close." -ErrorAction SilentlyContinue
                 Do {
-                    $counter ++
+                    $counter++
                     Start-Sleep -Seconds 1
                 } Until ($counter -eq 30 -or ($null -eq (Get-Process | Where-Object { $_.Name -eq 'msrdc' })))
-                If ($Counter -lt 30) {
-                    Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 580 -Message "Open connections closed after $counter seconds." -ErrorAction SilentlyContinue
+                
+                If ($counter -lt 30) {
+                    Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 580 -Message "MSRDC connections closed after $counter seconds." -ErrorAction SilentlyContinue
                     Return $false
                 }
                 Else {
-                    Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 581 -Message "MSRDC connections still open after 30 seconds." -ErrorAction SilentlyContinue
+                    Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 581 -Message "MSRDC connections still active after 30 seconds. User is still active." -ErrorAction SilentlyContinue
                     Return $true
                 }
             }
             Else {
+                Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 580 -Message "No active MSRDC connections found." -ErrorAction SilentlyContinue
                 Return $false
             }
         }
@@ -311,8 +316,11 @@ If ($SystemDisconnectAction -or $UserDisconnectSignOutAction) {
             # Must consider system initiated events first because they tell us that the user may not be present at the local terminal and we want to take actions immediately
             If ($SystemInitiatedEvents) {
                 Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 577 -Message "A RDP connection was disconnected by the system either due to a timeout on the session host (SSO configuration), user locking the remote session, or a connection to the same host pool from a different client." -ErrorAction SilentlyContinue
+                Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 578 -Message "[DEBUG] About to call Get-MSRDCProcess for system disconnect event." -ErrorAction SilentlyContinue
 
-                If (Get-MSRDCProcess -eq $false) {
+                $msrdcResult = Get-MSRDCProcess
+                Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 578 -Message "[DEBUG] Get-MSRDCProcess returned: $msrdcResult" -ErrorAction SilentlyContinue
+                If ($msrdcResult -eq $false) {
                     If ($SystemDisconnectAction -eq 'ResetClient') {
                         # Restart the script to clear the client cache and kill the current PowerShell process.
                         Restart-Script
@@ -333,7 +341,12 @@ If ($SystemDisconnectAction -or $UserDisconnectSignOutAction) {
                 }                
             }
             If ($UserInitiatedEvents) {
-                If (Get-MSRDCProcess -eq $false) {
+                Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 578 -Message "There are user initiated logoff or disconnection events." -ErrorAction SilentlyContinue
+                Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 578 -Message "[DEBUG] About to call Get-MSRDCProcess for user disconnect event." -ErrorAction SilentlyContinue
+
+                $msrdcResult = Get-MSRDCProcess
+                Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 578 -Message "[DEBUG] Get-MSRDCProcess returned: $msrdcResult" -ErrorAction SilentlyContinue
+                If ($msrdcResult -eq $false) {
                     If ($UserDisconnectSignOutAction -eq 'ResetClient') {
                         # Restart the script to clear the client cache and kill the current PowerShell process.
                         Restart-Script
@@ -353,7 +366,7 @@ If ($SystemDisconnectAction -or $UserDisconnectSignOutAction) {
                     # User initiated logoff or disconnection events. Do not take action in this case.
                     Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 582 -Message "There are still active remote desktop sessions. Assuming that user is still active and therefore, not taking action." -ErrorAction SilentlyContinue
                 }
-                Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 578 -Message "There are user initiated logoff or disconnection events." -ErrorAction SilentlyContinue               
+                             
             }
             If ($TotalFilteredEvents -eq 0) {
                 Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 583 -Message "All 1026 events were filtered out. There is no reason to take action." -ErrorAction SilentlyContinue
