@@ -239,9 +239,7 @@ If ($SystemDisconnectAction -or $UserDisconnectSignOutAction) {
         }
 
         Function Get-MSRDCProcess {
-            Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 578 -Message "[DEBUG] Get-MSRDCProcess function called. Checking for msrdc processes..." -ErrorAction SilentlyContinue
             $msrdcProcesses = Get-Process | Where-Object { $_.Name -eq 'msrdc' }
-            Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 578 -Message "[DEBUG] Found $($msrdcProcesses.Count) msrdc processes." -ErrorAction SilentlyContinue
             If ($msrdcProcesses) {
                 $counter = 0
                 Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 579 -Message "Detected $($msrdcProcesses.Count) active MSRDC connection(s). Waiting up to 30 seconds for them to close." -ErrorAction SilentlyContinue
@@ -316,10 +314,8 @@ If ($SystemDisconnectAction -or $UserDisconnectSignOutAction) {
             # Must consider system initiated events first because they tell us that the user may not be present at the local terminal and we want to take actions immediately
             If ($SystemInitiatedEvents) {
                 Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 577 -Message "A RDP connection was disconnected by the system either due to a timeout on the session host (SSO configuration), user locking the remote session, or a connection to the same host pool from a different client." -ErrorAction SilentlyContinue
-                Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 578 -Message "[DEBUG] About to call Get-MSRDCProcess for system disconnect event." -ErrorAction SilentlyContinue
 
                 $msrdcResult = Get-MSRDCProcess
-                Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 578 -Message "[DEBUG] Get-MSRDCProcess returned: $msrdcResult" -ErrorAction SilentlyContinue
                 If ($msrdcResult -eq $false) {
                     If ($SystemDisconnectAction -eq 'ResetClient') {
                         # Restart the script to clear the client cache and kill the current PowerShell process.
@@ -342,10 +338,8 @@ If ($SystemDisconnectAction -or $UserDisconnectSignOutAction) {
             }
             If ($UserInitiatedEvents) {
                 Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventId 578 -Message "There are user initiated logoff or disconnection events." -ErrorAction SilentlyContinue
-                Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 578 -Message "[DEBUG] About to call Get-MSRDCProcess for user disconnect event." -ErrorAction SilentlyContinue
 
                 $msrdcResult = Get-MSRDCProcess
-                Write-EventLog -LogName $EventLog -Source $EventSource -EntryType 'Information' -EventID 578 -Message "[DEBUG] Get-MSRDCProcess returned: $msrdcResult" -ErrorAction SilentlyContinue
                 If ($msrdcResult -eq $false) {
                     If ($UserDisconnectSignOutAction -eq 'ResetClient') {
                         # Restart the script to clear the client cache and kill the current PowerShell process.
