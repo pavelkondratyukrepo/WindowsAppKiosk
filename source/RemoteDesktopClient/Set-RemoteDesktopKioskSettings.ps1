@@ -54,10 +54,15 @@ When the default 'explorer' shell is used additional local group policy settings
 
 .PARAMETER AutoSubscribe
 This switch parameter determines If the Remote Desktop client for Windows automatically subscribes to an Azure Virtual Desktop workspace.
+Note: AutoSubscribe is NOT supported for AzureCloud (Azure Commercial). For Azure Commercial environments, use Group Policy to configure the subscription URL instead.
 
 .PARAMETER Cloud
 This value is REQUIRED if 'AutoSubscribe' is present. It determines the Azure environment to which you are connecting. It ultimately determines the Url of the Remote Desktop Feed which
 varies by environment by setting the $SubscribeUrl variable and replacing placeholders in several files during installation.
+Valid options are: AzureChina, AzureUSGovernment, AzureGovernmentSecret, and AzureGovernmentTopSecret.
+Note: AzureCloud (Azure Commercial) is not available as an option because AutoSubscribe is not supported in that environment.
+IMPORTANT: For AzureGovernmentSecret and AzureGovernmentTopSecret (air-gapped environments), you must manually replace the '<CLOUDSUFFIX>' placeholder in this script file (lines 317-318) 
+with your environment's actual cloud suffix BEFORE running the script. See the README.md file for detailed instructions on obtaining the cloud suffix value for your air-gapped environment.
 The list of Urls can be found at
 https://learn.microsoft.com/en-us/azure/virtual-desktop/users/connect-microsoft-store?source=recommendations#subscribe-to-a-workspace.
 
@@ -139,7 +144,7 @@ param (
     [Parameter()]
     [switch]$AutoSubscribe,
 
-    [ValidateSet('AzureChina', 'AzureCloud', 'AzureUSGovernment', 'AzureGovernmentSecret', 'AzureGovernmentTopSecret')]
+    [ValidateSet('AzureChina', 'AzureUSGovernment', 'AzureGovernmentSecret', 'AzureGovernmentTopSecret')]
     [string]$Cloud,
 
     [switch]$InstallRemoteDesktopClient,
@@ -310,7 +315,6 @@ $MaintenanceActivationTimeISO = "2000-01-01T$MaintenanceActivationTime"
 if ($AutoSubscribe) {
     Switch ($Cloud) {
         'AzureChina' { $SubscribeUrl = 'https://rdweb.wvd.azure.cn/api/arm/feeddiscovery' }
-        'AzureCloud' { $SubscribeUrl = 'https://rdweb.wvd.azure.com' }
         'AzureUSGovernment' { $SubscribeUrl = 'https://rdweb.wvd.azure.us/api/arm/feeddiscovery' }
         'AzureGovernmentSecret' { $SubscribeUrl = 'https://rdweb.wvd.<CLOUDSUFFIX>/api/arm/feeddiscovery' }
         'AzureGovernmentTopSecret' { $SubscribeUrl = 'https://rdweb.wvd.<CLOUDSUFFIX>/api/arm/feeddiscovery' }
