@@ -322,17 +322,27 @@ You can utilize a custom detection script in Intune or use a Registry detection 
 
 ##### MultiApp Kiosk
 
-1. Create a custom configuration profile and specify the **OMA-URI** as './Vendor/MSFT/AssignedAccess/Configuration' with the **Data type** as 'string (XML file)'. Then select the appropriate MultiApp XML file from the 'source\AssignedAccess\MultiApp' directory. Deploy to devices. [^7]
+1. Create a custom configuration profile and name it appropriately.
+2. **Multi-App Configuration:** Add a new OMA-URI Setting and specify the **OMA-URI** as './Vendor/MSFT/AssignedAccess/Configuration' with the **Data type** as 'string (XML file)'. Then select the appropriate MultiApp XML file from the 'source\AssignedAccess\MultiApp' directory. [^7]
 
   **Figure 7:** Intune Multi-App Kiosk configuration
 
   ![Intune Restricted User Experience Kiosk Profile](../../docs/media/OMA-URI-MultiApp.png)
 
-2. Hide the Recommended Section of the Start Menu by, creating a custom configuration profile and specifying the **OMA-URI** as './Vendor/MSFT/Policy/Config/Start/HideRecommendedSection' with the **Data type** as 'integer'. Set the value to 1. Deploy to Devices.
-3. Disable Search by creating a new Settings Catalog profile and setting **Search | Disable Search** to 'Enable'. Deploy to Devices.
-4. If you deployed a Multi-App Configuration with Settings and you wish to restrict the Settings and Control Panel to only certain pages, create a new Settings Catalog profile and select the settings as shown in the figure below.
+1. **Hide the Recommended Section of the Start Menu:** Add a new row and specify the **OMA-URI** as './Vendor/MSFT/Policy/Config/Start/HideRecommendedSection' with the **Data type** as 'integer'. Set the value to 1.
+2. **Disable Search box in Start Menu:** Add a new row and specify **OMA-URI** as './Device/Vendor/MSFT/Policy/Config/Search' with the **Data type** as 'integer'. Set the value to 1.
+3. **Hide Hibernate:** Add a new row and specify **OMA-URI** as './Device/Vendor/MSFT/Policy/Config/Start/HideHibernate' with the **Data type** as 'integer'. Set the value to 1.
+4. **Hide Sleep:** Add a new row and specify **OMA-URI** as './Device/Vendor/MSFT/Policy/Config/Start/HideSleep' with the **Data type** as 'integer'. Set the value to 1.
 
-  **Figure 8:** Intune Restrict Settings and Control Panel
+   **Figure 8:** Intune Custom Profile configuration
+
+   ![Intune Custom Profile Configuration](../..docs/media/MultiAppIntune.png)
+
+5. Deploy this custom configuration profile to devices.
+
+6. If you deployed a Multi-App Configuration with Settings and you wish to restrict the Settings and Control Panel to only certain pages, create a new Settings Catalog profile and select the settings as shown in the figure below.
+
+  **Figure 9:** Intune Restrict Settings and Control Panel
 
   ![Intune Restrict Settings and Control Panel](../../docs/media/Intune-RestrictSettingsAndControlPanel.png)
 
@@ -340,7 +350,7 @@ You can utilize a custom detection script in Intune or use a Registry detection 
 
 1. If desired, create a Shared multi-user device configuration profile and select the appropriate settings based on your desired configuration. The figure below shows all items configured.
 
-  **Figure 9:** Intune Shared Multi-User Device Configuration
+  **Figure 10:** Intune Shared Multi-User Device Configuration
 
   ![Intune Shared PC Profile](../../docs/media/Intune-SharedPC.png)
 
