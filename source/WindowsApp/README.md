@@ -336,7 +336,7 @@ You can utilize a custom detection script in Intune or use a Registry detection 
 
    **Figure 8:** Intune Custom Profile configuration
 
-   ![Intune Custom Profile Configuration](../..docs/media/MultiAppIntune.png)
+   ![Intune Custom Profile Configuration](../../docs/media/MultiAppIntune.png)
 
 5. Deploy this custom configuration profile to devices.
 
