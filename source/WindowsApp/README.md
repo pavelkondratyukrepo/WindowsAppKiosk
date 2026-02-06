@@ -62,7 +62,7 @@ As documented in the Table 1, The `AutologonKiosk` parameter controls the user s
 
 **Figure 1:** User Sign-In Flow Scenarios
 
-![Sign-in Flows](docs/media/KioskTypes.png)
+![Sign-in Flows](../../docs/media/KioskTypes.png)
 
 ### User Interface Details
 
@@ -74,13 +74,13 @@ The user interface experience provides a restricted Start menu with only the Win
 
 **Figure 2:** Multi-App Kiosk showing Windows App interface
 
-![Windows App Multi-App](docs/media/WindowsApp-MultiApp.png)
+![Windows App Multi-App](../../docs/media/WindowsApp-MultiApp.png)
 
 The figure below illustrates the Settings applet restricted to allow the user to adjust display and audio settings. This would primarily be used in a multi-monitor scenario or when audio configuration is needed.
 
 **Figure 3:** Multi-App Showing Display Settings
 
-![Restricted Settings App](docs/media/Settings.png)
+![Restricted Settings App](../../docs/media/Settings.png)
 
 #### Windows App Shell Laucher Kiosk
 
@@ -92,13 +92,13 @@ The figure below illustrates the display of an Autologon Windows App Shell Launc
 
 **Figure 4:** Windows App Shell Kiosk before Sign-in
 
-![Windows App Shell Launcher Sign In](docs/media/ShellLauncher-SignIn.png)
+![Windows App Shell Launcher Sign In](../../docs/media/ShellLauncher-SignIn.png)
 
 The figure below illustrates the Windows App Shell kiosk after a user signs in to the Windows App.
 
 **Figure 5:** Windows App Shell Kiosk showing Windows App only
 
-![Windows App Shell Launcher](docs/media/WindowsApp-SingleApp.png)
+![Windows App Shell Launcher](../../docs/media/WindowsApp-SingleApp.png)
 
 ## Windows App Auto Logoff Behaviors
 
@@ -316,7 +316,7 @@ You can utilize a custom detection script in Intune or use a Registry detection 
 
 **Figure 6:** Intune Shell Launcher configuration
 
-![Intune Shell Launcher Profile](docs/media/OMA-URI-ShellLauncher.png)
+![Intune Shell Launcher Profile](../../docs/media/OMA-URI-ShellLauncher.png)
 
 2. Disable Task Manager in the lock screen by creating a new Settings Catalog profile and setting **Administrative Templates | System > Ctrl+Alt+Del Options | Remove Task Manager (User)** to 'Enabled'. Deploy to Users and use a kiosk devices device filter.
 
@@ -326,7 +326,7 @@ You can utilize a custom detection script in Intune or use a Registry detection 
 
   **Figure 7:** Intune Multi-App Kiosk configuration
 
-  ![Intune Restricted User Experience Kiosk Profile](docs/media/OMA-URI-MultiApp.png)
+  ![Intune Restricted User Experience Kiosk Profile](../../docs/media/OMA-URI-MultiApp.png)
 
 2. Hide the Recommended Section of the Start Menu by, creating a custom configuration profile and specifying the **OMA-URI** as './Vendor/MSFT/Policy/Config/Start/HideRecommendedSection' with the **Data type** as 'integer'. Set the value to 1. Deploy to Devices.
 3. Disable Search by creating a new Settings Catalog profile and setting **Search | Disable Search** to 'Enable'. Deploy to Devices.
@@ -334,7 +334,7 @@ You can utilize a custom detection script in Intune or use a Registry detection 
 
   **Figure 8:** Intune Restrict Settings and Control Panel
 
-  ![Intune Restrict Settings and Control Panel](docs/media/Intune-RestrictSettingsAndControlPanel.png)
+  ![Intune Restrict Settings and Control Panel](../../docs/media/Intune-RestrictSettingsAndControlPanel.png)
 
 ##### Common Settings
 
@@ -342,7 +342,7 @@ You can utilize a custom detection script in Intune or use a Registry detection 
 
   **Figure 9:** Intune Shared Multi-User Device Configuration
 
-  ![Intune Shared PC Profile](docs/media/Intune-SharedPC.png)
+  ![Intune Shared PC Profile](../../docs/media/Intune-SharedPC.png)
 
 2. Disable Windows Spotlight by creating a new Settings Catalog profile and setting **Experience | Allow Windows Spotlight (User)** to 'Block'. Deploy to Users and limit it to Kiosk Devices using a device filter.
 3. If you did not deploy the Shared Multi-User device configuration profile, then to disable the First Logon animation, create a Settings Catalog profile and set **Windows Logon | Enable First Logon Animation** to 'Disabled'. Deploy to Devices.
