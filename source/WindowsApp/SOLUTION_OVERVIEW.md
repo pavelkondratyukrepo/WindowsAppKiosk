@@ -1,6 +1,6 @@
-# Windows App Kiosk - Description
+# Windows App Kiosk - Solution Overview
 
-**Navigation:** [Overview](README.md) | Description | [Implementation Guide](IMPLEMENTATION.md) | [Intune Deployment](INTUNE_DEPLOYMENT.md)
+**Navigation:** [Overview](README.md) | Solution Overview | [Implementation Guide](IMPLEMENTATION.md) | [Intune Deployment](INTUNE_DEPLOYMENT.md) | [Advanced Customizations](ADVANCED_CUSTOMIZATIONS.md)
 
 ---
 
@@ -86,7 +86,7 @@ The figure below illustrates the Settings applet restricted to allow the user to
 
 ![Restricted Settings App](../../docs/media/Settings.png)
 
-#### Windows App Shell Laucher Kiosk
+#### Windows App Shell Launcher Kiosk
 
 When the `WindowsAppShell` parameter is selected, the Windows App replaces the default Windows 'Explorer.exe' shell using [Shell Launcher](https://learn.microsoft.com/en-us/windows/configuration/shell-launcher/).
 
@@ -116,6 +116,65 @@ The table below outlines the automatic logoff behaviors available for Windows Ap
 | ResetAppOnCloseOnly | Sign out users and reset app data when the Windows App is closed | Suitable when users manually close the app |
 | ResetAppAfterConnection | Sign out users and reset app data when a successful connection is made to a session host or Cloud PC. | Provides comprehensive cleanup after establishing connections. Suitable when users have only one resource assigned. |
 | ResetAppOnCloseOrIdle | Sign out users and reset app data when the app is closed OR the system is idle for the specified interval | Enforces idle time restrictions to help prevent credential theft. |
+
+## Idle Timeout and Security Behaviors
+
+For non-AutoLogon scenarios (where users sign in with their own credentials), the solution supports configurable idle timeout behaviors to enhance security and manage system resources. These idle behaviors operate in an escalating sequence to progressively secure the device during periods of inactivity.
+
+### Idle Timeout Escalation
+
+The idle timeout system has three progressive stages:
+
+1. **Screen Lock** - After a specified period of inactivity, the screen locks, requiring credentials to unlock
+2. **Automatic Logoff** - If the screen remains locked for an additional period, the user is automatically logged off
+3. **System Sleep** - After the logoff, if the system remains idle for another period, it enters sleep mode to conserve power
+
+**Idle Timeout Escalation Timeline:**
+
+The diagram below illustrates how the idle timeouts escalate over time when configured:
+
+```
+User Activity Stops
+        |
+        v
+    [Active Session]
+        |
+        | (IdleLockTimeoutMinutes)
+        |
+        v
+    [🔒 SCREEN LOCKS]
+        |
+        | Screen remains locked
+        | (IdleLogoffTimeoutMinutes - IdleLockTimeoutMinutes)
+        | 
+        | ⚠️  User can unlock anytime during this period to cancel logoff
+        |
+        v
+    [👤 USER LOGGED OFF]
+        |
+        | System continues idle
+        | (IdleSleepTimeoutMinutes - IdleLogoffTimeoutMinutes)
+        |
+        v
+    [💤 SYSTEM SLEEPS]
+```
+
+**Key Points:**
+
+- All timings are measured from when user activity stops
+- Each stage requires a minimum 15-minute gap from the previous stage
+- If the user unlocks during the logoff countdown, the logoff is canceled
+- These settings only apply when `AutoLogonKiosk` is not used (direct user logon scenarios)
+- Sleep timing requires power policies to be configured
+
+### Smart Card Behavior
+
+For environments using smart card authentication, the solution supports automatic actions when a smart card is removed:
+
+- **Lock Workstation** - Immediately locks the screen when the smart card is removed, requiring the card to unlock
+- **Force Logoff** - Immediately logs off the user when the smart card is removed, providing enhanced security
+
+This feature is only available for non-AutoLogon scenarios and requires the Smart Card Removal Policy service to be running.
 
 ## Additional Resources
 

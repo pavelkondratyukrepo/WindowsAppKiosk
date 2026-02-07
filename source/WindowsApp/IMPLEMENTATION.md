@@ -1,6 +1,6 @@
 # Windows App Kiosk - Implementation Guide
 
-**Navigation:** [Overview](README.md) | [Description](DESCRIPTION.md) | Implementation Guide | [Intune Deployment](INTUNE_DEPLOYMENT.md)
+**Navigation:** [Overview](README.md) | [Solution Overview](SOLUTION_OVERVIEW.md) | Implementation Guide | [Intune Deployment](INTUNE_DEPLOYMENT.md) | [Advanced Customizations](ADVANCED_CUSTOMIZATIONS.md)
 
 ---
 
@@ -46,56 +46,15 @@ The table below describes each parameter and any requirements or usage informati
 
 ### Idle Timeout Dependencies
 
-The idle timeout parameters have specific dependencies and minimum time gaps to ensure proper escalation behavior. The following table outlines these requirements:
+The idle timeout parameters have specific dependencies and minimum time gaps to ensure proper escalation behavior. For conceptual information about how these timeouts work together, see the [Solution Overview](SOLUTION_OVERVIEW.md#idle-timeout-and-security-behaviors).
 
 **Table 2:** Idle Timeout Parameter Dependencies
 
-| Parameter | Depends On | Minimum Gap | Behavior |
-|:----------|:-----------|:------------|:---------|
-| `IdleLockTimeoutMinutes` | None | N/A | Locks the workstation after specified minutes of inactivity. |
-| `IdleLogoffTimeoutMinutes` | **Requires** `IdleLockTimeoutMinutes` | Must be at least **15 minutes greater** than `IdleLockTimeoutMinutes` | Triggers a scheduled task when the screen locks. After the time difference (IdleLogoffTimeoutMinutes - IdleLockTimeoutMinutes) passes while the session remains locked, the user is logged off. If the user unlocks before the timer expires, logoff is canceled. |
-| `IdleSleepTimeoutMinutes` | **Requires** `SetPowerPolicies` switch | Must be at least **15 minutes greater** than `IdleLogoffTimeoutMinutes` (if used), or **15 minutes greater** than `IdleLockTimeoutMinutes` (if no logoff configured) | Puts the system to sleep after specified minutes of inactivity. |
-
-**Idle Timeout Escalation Timeline:**
-
-The diagram below illustrates how the idle timeouts escalate over time when all three parameters are configured as follows:
-
-- IdleLockTimeoutMinutes = 15
-- IdleLockTimeoutMnutes = 30
-- IdleSleepTimeoutMinutes = 60
-
-```
-User Activity Stops
-        |
-        v
-    [Active Session]
-        |
-        | (IdleLockTimeoutMinutes = 15 min)
-        |
-        v
-    [🔒 SCREEN LOCKS] (Total: 15 mins from inactivity)
-        |
-        | Screen remains locked for
-        | (IdleLogoffTimeoutMinutes - IdleLockTimeoutMinutes = 15 min)
-        | 
-        | ⚠️  User can unlock anytime during this period to cancel logoff
-        |
-        v
-    [👤 USER LOGGED OFF] (Total: 30 min from inactivity)
-        |
-        | System continues idle for
-        | (IdleSleepTimeoutMinutes - IdleLogoffTimeoutMinutes = 30 min)
-        |
-        v
-    [💤 SYSTEM SLEEPS] (Total: 60 min from inactivity)
-```
-
-**Key Points:**
-
-- All timings are measured from when user activity stops
-- Lock → Logoff: Scheduled task monitors for unlock events
-- If user unlocks during the logoff countdown, the logoff is canceled
-- Sleep timing continues regardless of logoff occurrence
+| Parameter | Depends On | Minimum Gap | Valid Range |
+|:----------|:-----------|:------------|:------------|
+| `IdleLockTimeoutMinutes` | None | N/A | 5-60 minutes |
+| `IdleLogoffTimeoutMinutes` | **Requires** `IdleLockTimeoutMinutes` | Must be at least **15 minutes greater** than `IdleLockTimeoutMinutes` | 5-180 minutes |
+| `IdleSleepTimeoutMinutes` | **Requires** `SetPowerPolicies` switch | Must be at least **15 minutes greater** than `IdleLogoffTimeoutMinutes` (if used), or **15 minutes greater** than `IdleLockTimeoutMinutes` (if logoff not configured) | 30-1440 minutes |
 
 **Example Valid Configurations:**
 

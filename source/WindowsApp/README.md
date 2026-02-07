@@ -2,8 +2,8 @@
 
 **📖 Documentation Navigation:**
 
-| [Overview](README.md) | [Description](DESCRIPTION.md) | [Implementation Guide](IMPLEMENTATION.md) | [Intune Deployment](INTUNE_DEPLOYMENT.md) |
-| :--: | :--: | :--: | :--: |
+| [Overview](README.md) | [Solution Overview](SOLUTION_OVERVIEW.md) | [Implementation Guide](IMPLEMENTATION.md) | [Intune Deployment](INTUNE_DEPLOYMENT.md) | [Advanced Customizations](ADVANCED_CUSTOMIZATIONS.md) |
+| :--: | :--: | :--: | :--: | :--: |
 
 ---
 
@@ -13,7 +13,7 @@ This repository contains a script and supporting artifacts to configure a Window
 
 ## Quick Links
 
-- **[Description Guide](DESCRIPTION.md)** - Learn about the solution architecture, prerequisites, user interface modes, and sign-in flows
+- **[Solution Overview](SOLUTION_OVERVIEW.md)** - Learn about the solution architecture, prerequisites, user interface modes, and sign-in flows
 - **[Implementation Guide](IMPLEMENTATION.md)** - Complete parameter reference, manual installation steps, and troubleshooting
 - **[Intune Deployment Guide](INTUNE_DEPLOYMENT.md)** - Deploy via Win32 apps or configuration profiles in Microsoft Intune
 
@@ -41,18 +41,19 @@ Windows App completely replaces the Windows Explorer shell, providing a dedicate
 
 ## Getting Started
 
-1. Review the [Description Guide](DESCRIPTION.md) to understand the solution architecture
+1. Review the [Solution Overview](SOLUTION_OVERVIEW.md) to understand the solution architecture
 2. Check the [Implementation Guide](IMPLEMENTATION.md) for detailed parameters and installation steps
 3. For enterprise deployment, see the [Intune Deployment Guide](INTUNE_DEPLOYMENT.md)
 
 ## Documentation Structure
 
-This documentation is split across four files for easier navigation:
+This documentation is split across five files for easier navigation:
 
 - **README.md** (this file) - Overview and quick links
-- **[DESCRIPTION.md](DESCRIPTION.md)** - Architecture, prerequisites, UI modes, and capabilities
+- **[SOLUTION_OVERVIEW.md](SOLUTION_OVERVIEW.md)** - Architecture, prerequisites, UI modes, and capabilities
 - **[IMPLEMENTATION.md](IMPLEMENTATION.md)** - Parameters, installation procedures, and troubleshooting
 - **[INTUNE_DEPLOYMENT.md](INTUNE_DEPLOYMENT.md)** - Intune-specific deployment guidance
+- **[ADVANCED_CUSTOMIZATIONS.md](ADVANCED_CUSTOMIZATIONS.md)** - Advanced customization examples and Multi-App Kiosk configuration
 
 ## Additional Resources
 

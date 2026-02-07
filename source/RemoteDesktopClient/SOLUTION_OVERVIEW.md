@@ -1,6 +1,6 @@
-# Azure Virtual Desktop Client Kiosk - Description
+# Azure Virtual Desktop Client Kiosk - Solution Overview
 
-**Navigation:** [Overview](README.md) | Description | [Implementation Guide](IMPLEMENTATION.md) | [Intune Deployment](INTUNE_DEPLOYMENT.md)
+**Navigation:** [Overview](README.md) | Solution Overview | [Implementation Guide](IMPLEMENTATION.md) | [Intune Deployment](INTUNE_DEPLOYMENT.md)
 
 ---
 
@@ -15,7 +15,7 @@ The user interface customizations are configured using:
 - A Shell Launcher or Multi-App configuration applied via the Assigned Access CSP WMI Bridge.
 - A multi-user local group policy object for non-administrative users.
 - When the Remote Desktop Client is used the shell (i.e., `ClientShell` switch is present), an applocker policy that disables Notepad, Internet Explorer, WordPad, and Edge for all Non-Administrators.
-- Wnen the `ClientShell` switch is not present, one or more provisioning packages that remove pinned items from the start menu and enable Shared PC mode when that switch is used.
+- When the `ClientShell` switch is not present, one or more provisioning packages that remove pinned items from the start menu and enable Shared PC mode when that switch is used.
 
 The Remote Desktop client configurations are designed to enforce security of the client and access to the Azure Virtual Desktop service. The options can be summarized by the choice of triggers such as 'DeviceRemoval', 'IdleTimeout', or 'SessionDisconnect' (or supported combinations) and trigger actions such as 'Lock the workstation', 'Sign the user out of the workstation' or 'Reset the Remote Desktop client to remove cached credentials'.
 
@@ -45,7 +45,7 @@ This custom kiosk could be used for numerous scenarios including the three shown
 
 2. The ability to run the installation script as SYSTEM. The instructions are provided in the [Implementation Guide](IMPLEMENTATION.md#manual-installation).
 
-3. For Scenario 1 and 3, you'll need to [join the client device to Entra ID](https://learn.microsoft.com/en-us/entra/identity/devices/concept-directory-join) or [Entra ID Hybrid Join the device](https://learn.microsoft.com/en-us/entra/identity/devices/concept-hybrid-join).
+3. For Scenario 1, you'll need to [join the client device to Entra ID](https://learn.microsoft.com/en-us/entra/identity/devices/concept-directory-join) or [Entra ID Hybrid Join the device](https://learn.microsoft.com/en-us/entra/identity/devices/concept-hybrid-join).
 
 ## User Interface
 

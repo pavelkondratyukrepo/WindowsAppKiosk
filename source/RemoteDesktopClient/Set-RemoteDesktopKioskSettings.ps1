@@ -331,7 +331,7 @@ If ($null -ne $DeviceVendorID -and $DeviceVendorID -ne '') {
 # 2. 'SystemDisconnectAction' or 'UserDisconnectSignOutAction' is defined
 # 3. 'IdleTimeoutAction' is 'Logoff'
 # 4. 'DeviceRemovalAction' is defined and a 'DeviceVendorId' is defined
-# 5. None of the available triggers and actions are defined ('DeviceRemovalAction', 'IdleTimeoutAction', or 'SystemDisconnectAction', or 'UserDisconnectSignOutAction'). (Scenario 3)
+# 5. None of the available triggers and actions are defined ('DeviceRemovalAction', 'IdleTimeoutAction', or 'SystemDisconnectAction', or 'UserDisconnectSignOutAction').
 
 If ($Autologon -or $IdleTimeoutAction -eq 'Logoff' -or $SystemDisconnectAction -or $UserDisconnectSignOutAction -or ($DeviceRemovalAction -and $SecurityKey) -or (-not $Autologon -and ($null -eq $DeviceRemovalAction -and $null -eq $IdleTimeoutAction -and $null -eq $SystemDisconnectAction -and $null -eq $UserDisconnectSignOutAction))) {
     $CustomLaunchScript = $true

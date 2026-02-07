@@ -1,6 +1,6 @@
 # Azure Virtual Desktop Client Kiosk - Intune Deployment
 
-**Navigation:** [Overview](README.md) | [Description](DESCRIPTION.md) | [Implementation Guide](IMPLEMENTATION.md) | Intune Deployment
+**Navigation:** [Overview](README.md) | [Solution Overview](SOLUTION_OVERVIEW.md) | [Implementation Guide](IMPLEMENTATION.md) | Intune Deployment
 
 ---
 
@@ -55,6 +55,7 @@ You can utilize the `DetectionScript.ps1` as a custom detection script in Intune
 Use a Registry detection method to read the value of `HKEY_LOCAL_MACHINE\Software\Kiosk\version` which should be equal to the value of the version parameter used in the deployment script. This would be useful for when you do not implement AutoLogon.
 
 **Registry Detection Settings:**
+
 - **Key path:** `HKEY_LOCAL_MACHINE\SOFTWARE\Kiosk`
 - **Value name:** `version`
 - **Detection method:** String comparison

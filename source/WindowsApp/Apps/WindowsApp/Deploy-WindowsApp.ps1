@@ -1,7 +1,90 @@
+<#
+.SYNOPSIS
+    Deploys or uninstalls Windows App with optional auto logoff configuration.
+
+.DESCRIPTION
+    This script provisions or removes the Windows App (Microsoft.Windows365) on Windows devices.
+    It supports automatic download of the latest version or offline installation from a local MSIX file.
+    The script also configures Windows App auto logoff settings to manage user sessions and app data
+    based on inactivity, app closure, or successful connections.
+
+.PARAMETER DeploymentType
+    Specifies the deployment action. Valid values are 'Install' (default) or 'Uninstall'.
+
+.PARAMETER AutoLogoffConfig
+    Configures the auto logoff behavior for Windows App. Valid values:
+    - Disabled (default): No auto logoff behavior
+    - ResetAppOnCloseOnly: Logs off and resets when the app is closed
+    - ResetAppAfterConnection: Logs off and resets after successful connection to a resource
+    - ResetAppOnCloseOrIdle: Logs off on app close OR after idle timeout
+
+.PARAMETER AutoLogoffTimeInterval
+    Specifies the idle timeout interval in minutes (1-1440). Default is 60 minutes.
+    Required when AutoLogoffConfig is set to 'ResetAppOnCloseOrIdle'.
+    Windows App checks OS inactivity signals at this interval.
+
+.PARAMETER SkipFirstRunExperience
+    When specified, skips the First Run Experience (FRE) after Windows App is launched.
+    Recommended for kiosk scenarios to streamline the user experience.
+
+.EXAMPLE
+    .\Deploy-WindowsApp.ps1
+    Installs Windows App with default settings (no auto logoff configured).
+
+.EXAMPLE
+    .\Deploy-WindowsApp.ps1 -AutoLogoffConfig ResetAppOnCloseOnly -SkipFirstRunExperience
+    Installs Windows App and configures it to reset only when the app is closed, skipping FRE.
+
+.EXAMPLE
+    .\Deploy-WindowsApp.ps1 -AutoLogoffConfig ResetAppAfterConnection -SkipFirstRunExperience
+    Installs Windows App and configures it to reset after a successful connection to a resource.
+
+.EXAMPLE
+    .\Deploy-WindowsApp.ps1 -AutoLogoffConfig ResetAppOnCloseOrIdle -AutoLogoffTimeInterval 15 -SkipFirstRunExperience
+    Installs Windows App with 15-minute idle timeout. Resets on app close or after 15 minutes of OS inactivity.
+
+.EXAMPLE
+    .\Deploy-WindowsApp.ps1 -DeploymentType Uninstall
+    Uninstalls Windows App from the system.
+
+.NOTES
+    File Name      : Deploy-WindowsApp.ps1
+    Prerequisite   : Windows 10/11 with AppX support
+    Copyright      : Microsoft Corporation
+    
+    Registry Keys Configured:
+    - HKLM:\SOFTWARE\Microsoft\WindowsApp
+      - AutoLogoffEnable (DWORD): 0=Disabled, 1=Enabled
+      - AutoLogoffOnSuccessfulConnect (DWORD): 1=Reset after connection
+      - AutoLogoffTimeInterval (DWORD): Idle interval in minutes
+    - HKLM:\SOFTWARE\Microsoft\Windows365
+      - SkipFRE (DWORD): 1=Skip First Run Experience
+    
+    For more information on auto logoff, see:
+    https://learn.microsoft.com/en-us/windows-app/windowsautologoff
+
+.LINK
+    https://learn.microsoft.com/en-us/windows-app/overview
+
+.LINK
+    https://learn.microsoft.com/en-us/windows-app/windowsautologoff
+#>
+
 Param
 (
     [Parameter(Mandatory = $false)]
-    [string]$DeploymentType = "Install"
+    [string]$DeploymentType = "Install",
+
+    [Parameter(Mandatory = $false)]
+    [ValidateSet('Disabled', 'ResetAppOnCloseOnly', 'ResetAppAfterConnection', 'ResetAppOnCloseOrIdle')]
+    [string]$AutoLogoffConfig = 'Disabled',
+
+    [Parameter(Mandatory = $false)]
+    [ValidateRange(1, 1440)]
+    [int]$AutoLogoffTimeInterval = 60,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$SkipFirstRunExperience
 )
 
 #region Initialization
@@ -80,11 +163,87 @@ If ($DeploymentType -ne "Uninstall") {
     if ($tempDir -and (Test-Path -Path $tempDir)) {
         Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
     }
+
+    # Configure Windows App Auto Logoff settings
+    if ($AutoLogoffConfig -and $AutoLogoffConfig -ne 'Disabled') {
+        Write-Output "Configuring Windows App Auto Logoff settings..."
+        $WindowsAppRegPath = "HKLM:\SOFTWARE\Microsoft\WindowsApp"
+        $Windows365RegPath = "HKLM:\SOFTWARE\Microsoft\Windows365"
+
+        # Ensure registry paths exist
+        if (-not (Test-Path $WindowsAppRegPath)) {
+            New-Item -Path $WindowsAppRegPath -Force | Out-Null
+        }
+
+        switch ($AutoLogoffConfig) {
+            'ResetAppOnCloseOnly' {
+                Write-Output "Setting Auto Logoff to Reset App On Close Only"
+                New-ItemProperty -Path $WindowsAppRegPath -Name "AutoLogoffEnable" -PropertyType DWORD -Value 1 -Force | Out-Null
+                # Remove other trigger settings
+                Remove-ItemProperty -Path $WindowsAppRegPath -Name "AutoLogoffOnSuccessfulConnect" -ErrorAction SilentlyContinue
+                Remove-ItemProperty -Path $WindowsAppRegPath -Name "AutoLogoffTimeInterval" -ErrorAction SilentlyContinue
+            }
+            'ResetAppAfterConnection' {
+                Write-Output "Setting Auto Logoff to Reset App After Connection"
+                New-ItemProperty -Path $WindowsAppRegPath -Name "AutoLogoffOnSuccessfulConnect" -PropertyType DWORD -Value 1 -Force | Out-Null
+                # AutoLogoffEnable is automatically enabled when AutoLogoffOnSuccessfulConnect is set
+                Remove-ItemProperty -Path $WindowsAppRegPath -Name "AutoLogoffEnable" -ErrorAction SilentlyContinue
+                Remove-ItemProperty -Path $WindowsAppRegPath -Name "AutoLogoffTimeInterval" -ErrorAction SilentlyContinue
+            }
+            'ResetAppOnCloseOrIdle' {
+                if (-not $AutoLogoffTimeInterval) {
+                    Write-Error "AutoLogoffTimeInterval parameter is required when AutoLogoffConfig is set to 'ResetAppOnCloseOrIdle'"
+                    Exit 1
+                }
+                Write-Output "Setting Auto Logoff to Reset App On Close Or Idle (Interval: $AutoLogoffTimeInterval minutes)"
+                New-ItemProperty -Path $WindowsAppRegPath -Name "AutoLogoffEnable" -PropertyType DWORD -Value 1 -Force | Out-Null
+                New-ItemProperty -Path $WindowsAppRegPath -Name "AutoLogoffTimeInterval" -PropertyType DWORD -Value $AutoLogoffTimeInterval -Force | Out-Null
+                # Remove AutoLogoffOnSuccessfulConnect if it exists
+                Remove-ItemProperty -Path $WindowsAppRegPath -Name "AutoLogoffOnSuccessfulConnect" -ErrorAction SilentlyContinue
+            }
+        }
+
+        # Configure SkipFRE if specified
+        if ($SkipFirstRunExperience) {
+            Write-Output "Configuring Windows App to skip First Run Experience"
+            if (-not (Test-Path $Windows365RegPath)) {
+                New-Item -Path $Windows365RegPath -Force | Out-Null
+            }
+            New-ItemProperty -Path $Windows365RegPath -Name "SkipFRE" -PropertyType DWORD -Value 1 -Force | Out-Null
+        }
+        else {
+            # Ensure FRE is enabled (default behavior)
+            if (Test-Path $Windows365RegPath) {
+                Remove-ItemProperty -Path $Windows365RegPath -Name "SkipFRE" -ErrorAction SilentlyContinue
+            }
+        }
+
+        Write-Output "Windows App Auto Logoff configuration completed successfully"
+    }
 }
 Else {
     [string]$Script:LogName = "Uninstall" + ($SoftwareName -Replace ' ', '') + ".log"
     Start-Transcript -Path (Join-Path -Path $Script:LogDir -ChildPath $Script:LogName) -Force
+    
+    # Remove Windows App
     Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -eq "MicrosoftCorporationII.Windows365" } | Remove-AppxProvisionedPackage -Online
+    
+    # Remove Auto Logoff registry keys
+    Write-Output "Removing Windows App Auto Logoff registry settings..."
+    $WindowsAppRegPath = "HKLM:\SOFTWARE\Microsoft\WindowsApp"
+    $Windows365RegPath = "HKLM:\SOFTWARE\Microsoft\Windows365"
+    
+    if (Test-Path $WindowsAppRegPath) {
+        Remove-ItemProperty -Path $WindowsAppRegPath -Name "AutoLogoffEnable" -ErrorAction SilentlyContinue
+        Remove-ItemProperty -Path $WindowsAppRegPath -Name "AutoLogoffOnSuccessfulConnect" -ErrorAction SilentlyContinue
+        Remove-ItemProperty -Path $WindowsAppRegPath -Name "AutoLogoffTimeInterval" -ErrorAction SilentlyContinue
+        Write-Output "Removed Auto Logoff settings from Windows App registry key"
+    }
+    
+    if (Test-Path $Windows365RegPath) {
+        Remove-ItemProperty -Path $Windows365RegPath -Name "SkipFRE" -ErrorAction SilentlyContinue
+        Write-Output "Removed SkipFRE setting from Windows 365 registry key"
+    }
 }
 
 Stop-Transcript
