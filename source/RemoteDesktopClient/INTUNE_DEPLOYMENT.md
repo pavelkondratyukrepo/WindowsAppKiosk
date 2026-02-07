@@ -1,6 +1,6 @@
 # Azure Virtual Desktop Client Kiosk - Intune Deployment
 
-**Navigation:** [Overview](README.md) | [Description](DESCRIPTION.md) | [Implementation Guide](IMPLEMENTATION.md) | Intune Deployment
+**Navigation:** [Overview](README.md) | [Solution Overview](SOLUTION_OVERVIEW.md) | [Implementation Guide](IMPLEMENTATION.md) | Intune Deployment
 
 ---
 

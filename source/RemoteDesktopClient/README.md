@@ -2,7 +2,7 @@
 
 **📖 Documentation Navigation:**
 
-| [Overview](README.md) | [Description](DESCRIPTION.md) | [Implementation Guide](IMPLEMENTATION.md) | [Intune Deployment](INTUNE_DEPLOYMENT.md) |
+| [Overview](README.md) | [Solution Overview](SOLUTION_OVERVIEW.md) | [Implementation Guide](IMPLEMENTATION.md) | [Intune Deployment](INTUNE_DEPLOYMENT.md) |
 |:---:|:---:|:---:|:---:|
 
 ---
@@ -13,7 +13,7 @@ This repository contains a script and supporting artifacts to configure a Window
 
 ## Quick Links
 
-- **[Description Guide](DESCRIPTION.md)** - Learn about the solution architecture, prerequisites, user interface modes, and trigger/action behaviors
+- **[Solution Overview](SOLUTION_OVERVIEW.md)** - Learn about the solution architecture, prerequisites, user interface modes, and trigger/action behaviors
 - **[Implementation Guide](IMPLEMENTATION.md)** - Complete parameter reference, air-gapped cloud support, manual installation steps, and troubleshooting
 - **[Intune Deployment Guide](INTUNE_DEPLOYMENT.md)** - Deploy via Win32 apps in Microsoft Intune
 
@@ -56,7 +56,7 @@ Configure automated responses to various events:
 
 ## Getting Started
 
-1. Review the [Description Guide](DESCRIPTION.md) to understand the solution architecture and scenarios
+1. Review the [Solution Overview](SOLUTION_OVERVIEW.md) to understand the solution architecture and scenarios
 2. Check the [Implementation Guide](IMPLEMENTATION.md) for detailed parameters and installation steps
 3. For enterprise deployment, see the [Intune Deployment Guide](INTUNE_DEPLOYMENT.md)
 
@@ -65,7 +65,7 @@ Configure automated responses to various events:
 This documentation is split across four files for easier navigation:
 
 - **README.md** (this file) - Overview and quick links
-- **[DESCRIPTION.md](DESCRIPTION.md)** - Architecture, prerequisites, UI modes, and trigger/action details
+- **[SOLUTION_OVERVIEW.md](SOLUTION_OVERVIEW.md)** - Architecture, prerequisites, UI modes, and trigger/action details
 - **[IMPLEMENTATION.md](IMPLEMENTATION.md)** - Parameters, installation procedures, and troubleshooting
 - **[INTUNE_DEPLOYMENT.md](INTUNE_DEPLOYMENT.md)** - Intune-specific deployment guidance
 
