@@ -2,16 +2,17 @@
 
 ## 📋 Introduction
 
-This repository contains scripts and supporting artifacts to configure a Windows client operating system to act as a custom Azure Virtual Desktop (AVD) or Windows 365 client kiosk. The repository provides **two distinct kiosk solutions** to meet different organizational needs and client preferences.
+This repository contains scripts and supporting artifacts to configure a Windows client operating system to act as a custom Azure Virtual Desktop (AVD) or Windows 365 client kiosk using the modern **Windows App**.
 
-## 🎯 Kiosk Solutions Overview
+> [!NOTE]
+> A legacy Remote Desktop Client solution is also available for **air-gapped government cloud environments only** until Windows App adds support for these scenarios.
 
-### 1. Windows App Kiosk
+## 🎯 Windows App Kiosk Solution
 
 **📂 Location:** [`source/WindowsApp/`](source/WindowsApp/)  
 **📖 Documentation:** [Windows App Kiosk README](source/WindowsApp/README.md)
 
-The modern Windows App kiosk solution leverages Microsoft's latest remote desktop technology with streamlined configuration and built-in security features. This solution is ideal for organizations seeking:
+The Windows App kiosk solution leverages Microsoft's latest remote desktop technology with streamlined configuration and built-in security features:
 
 - **🚀 Modern Technology:** Uses the latest Windows App with native Microsoft features
 - **⚡ Simplified Configuration:** Streamlined setup with fewer complex parameters
@@ -27,50 +28,17 @@ The modern Windows App kiosk solution leverages Microsoft's latest remote deskto
 ✅ Smart card integration with Windows security policies  
 ✅ Modern user interface with Settings app access options
 
-### 2. Remote Desktop Client for Windows Kiosk
+## 🔒 Air-Gapped Environments Only
+
+### Remote Desktop Client for Windows Kiosk (Legacy)
 
 **📂 Location:** [`source/RemoteDesktopClient/`](source/RemoteDesktopClient/)  
 **📖 Documentation:** [Remote Desktop Client Kiosk README](source/RemoteDesktopClient/README.md)
 
-The traditional Remote Desktop Client for Windows kiosk solution provides comprehensive customization options and advanced trigger-based security actions. This solution is ideal for organizations requiring:
-
-- **🔐 Advanced Security Features:** Smart card and FIDO2 device removal triggers with customizable actions (lock, logoff, reset client)
-- **📡 Session Management:** Automatic client reset based on connection events, idle timeouts, and user disconnect scenarios  
-- **⚙️ Complex Trigger Logic:** Detailed control over system responses to various security events
-
-**Key Features:**
-
-✅ Windows Operating System Autologon support  
-✅ Auto Subscription to the user feed  
-✅ Remote Desktop Client shell or Multi-App Kiosk with restricted user experience and customized Start Menu  
-✅ WMI Event-based monitoring and automated responses  
-✅ Support for Settings app access options  
-✅ **Support for air-gapped government clouds**
-
-## 📊 Solution Comparison
-
-| Feature | Windows App | Remote Desktop Client |
-| :------ | :---------: | :-------------------: |
-| **Client Technology** | Windows App | Remote Desktop Client for Windows |
-| **Security Triggers** | Smart Card Removal, Idle, App Close | Device Removal (Smart Card or FIDO2), Idle, Session Disconnect, App Close |
-| **Auto Logoff** | Native Windows App Features | Custom Script-based |
-
-### 💡 Choosing the Right Solution
-
-**Choose Windows App Kiosk (Recommended):**
-
-✅ Modern, actively supported client technology  
-✅ Simplified configuration and maintenance  
-✅ Native Microsoft auto logoff features  
-✅ Streamlined user experience  
-✅ Easier long-term management
-
-**Choose Remote Desktop Client Kiosk only if you require:**
-
-⚠️ **Support for Air-Gapped Government Clouds** (until Windows App adds support)
-
 > [!IMPORTANT]
-> **Deprecation Notice:** The Remote Desktop Client for Windows is scheduled for deprecation in commercial environments at the end of **March 2026**. Support for the Remote Desktop Client kiosk solution will be removed from this repository once Windows App officially supports air-gapped government cloud environments. Organizations should plan to migrate to the Windows App kiosk solution.
+> **Use this solution ONLY for air-gapped government cloud environments.** The Remote Desktop Client for Windows is scheduled for deprecation in commercial environments at the end of **March 2026**. This solution will be removed from the repository once Windows App officially supports air-gapped government clouds.
+> 
+> **For all other scenarios, use the Windows App kiosk solution above.**
 
 This kiosk solution can be used for numerous scenarios including secure remote access, shared workstations, and dedicated Azure Virtual Desktop endpoints.
 
@@ -90,18 +58,10 @@ This kiosk solution can be used for numerous scenarios including secure remote a
 
 ### Solution-Specific Requirements
 
-- **Remote Desktop Client Kiosk:** See [detailed requirements](source/RemoteDesktopClient/README.md#prerequisites)
 - **Windows App Kiosk:** See [detailed requirements](source/WindowsApp/README.md#prerequisites)
+- **Remote Desktop Client Kiosk (Air-Gapped Only):** See [detailed requirements](source/RemoteDesktopClient/README.md#prerequisites)
 
 ## 🚀 Getting Started
-
-### Choose Your Solution
-
-Select the appropriate kiosk solution based on your requirements:
-
-#### Option 1: Windows App Kiosk
-
-**🎯 Best for:** Modern Windows 10 or 11 deployments seeking simplified configuration
 
 📖 **[View Windows App Kiosk Documentation](source/WindowsApp/README.md)**
 
@@ -111,17 +71,9 @@ Select the appropriate kiosk solution based on your requirements:
 2. Follow the installation instructions in the README  
 3. Run `Set-WindowsAppKioskSettings.ps1` with your desired parameters
 
-#### Option 2: Remote Desktop Client for Windows Kiosk
+### Air-Gapped Environments
 
-**🎯 Best for:** Air-gapped government cloud environments (until Windows App support is available)
-
-📖 **[View Remote Desktop Client Kiosk Documentation](source/RemoteDesktopClient/README.md)**
-
-**Quick Start:**
-
-1. Navigate to `source/RemoteDesktopClient/`
-2. Follow the installation instructions in the README
-3. Run `Set-RemoteDesktopKioskSettings.ps1` with your desired parameters
+If you are deploying in an **air-gapped government cloud environment**, see the [Remote Desktop Client Kiosk Documentation](source/RemoteDesktopClient/README.md) for the legacy solution. This should only be used until Windows App adds support for these environments.
 
 ## 📚 Additional Resources
 
