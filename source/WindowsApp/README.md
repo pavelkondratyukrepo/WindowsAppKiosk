@@ -2,8 +2,8 @@
 
 **📖 Documentation Navigation:**
 
-| [Overview](README.md) | [Description](DESCRIPTION.md) | [Implementation Guide](IMPLEMENTATION.md) | [Intune Deployment](INTUNE_DEPLOYMENT.md) |
-| :--: | :--: | :--: | :--: |
+| [Overview](README.md) | [Description](DESCRIPTION.md) | [Implementation Guide](IMPLEMENTATION.md) | [Intune Deployment](INTUNE_DEPLOYMENT.md) | [Advanced Customizations](ADVANCED_CUSTOMIZATIONS.md) |
+| :--: | :--: | :--: | :--: | :--: |
 
 ---
 

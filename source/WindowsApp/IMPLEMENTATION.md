@@ -1,6 +1,6 @@
 # Windows App Kiosk - Implementation Guide
 
-**Navigation:** [Overview](README.md) | [Description](DESCRIPTION.md) | Implementation Guide | [Intune Deployment](INTUNE_DEPLOYMENT.md)
+**Navigation:** [Overview](README.md) | [Description](DESCRIPTION.md) | Implementation Guide | [Intune Deployment](INTUNE_DEPLOYMENT.md) | [Advanced Customizations](ADVANCED_CUSTOMIZATIONS.md)
 
 ---
 
