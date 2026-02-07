@@ -61,6 +61,12 @@ You can utilize a custom detection script in Intune or use a Registry detection 
 
 As an alternative to Win32 app deployment, you can use a mixture of Intune configuration profiles to deploy the kiosk settings.
 
+> **Important Limitations:**
+> 
+> - **Idle Timeout Behaviors**: The idle lock → logoff → sleep escalation behavior is **not available** when using configuration profiles only. This feature requires a custom scheduled task that is created by the [Set-WindowsAppKioskSettings.ps1](Set-WindowsAppKioskSettings.ps1) script during Win32 app deployment. If you need this functionality, use the Win32 app deployment method instead.
+> 
+> - **Administrator Exclusions**: When deploying user-scoped policies (marked with "User" in the settings path), ensure these policies are deployed to **standard users only** and specifically **exclude administrators**. This ensures help desk and support personnel can troubleshoot and perform administrative tasks on kiosk devices without being restricted by the kiosk policies. Use device filters or group assignments to properly scope these policies.
+
 ### Shell Launcher Settings
 
 1. **Shell Launcher** - Create a custom configuration profile:
