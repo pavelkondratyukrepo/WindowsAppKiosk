@@ -31,6 +31,7 @@ The solution provides multiple deployment modes and customizable triggers:
 ### Trigger & Action System
 
 Configure automated responses to various events:
+
 - **Device Removal** - Smart card or FIDO2 token removal triggers lock, logoff, or client reset
 - **Idle Timeout** - System inactivity triggers configured actions
 - **System Disconnect** - Remote session disconnected by system (timeout, reconnect from another client)
@@ -52,8 +53,6 @@ Configure automated responses to various events:
 **Scenario 1: Corporate Shared Workspace** - Users sign in with Entra ID, access their AVD resources, with automatic lock/logoff on inactivity or device removal
 
 **Scenario 2: Public Kiosk** - AutoLogon with KioskUser0, users authenticate to AVD, client resets after session ends or device removal
-
-**Scenario 3: Dedicated Remote Application** - Single-purpose workstation auto-launching one remote application for streamlined workflows
 
 ## Getting Started
 

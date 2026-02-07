@@ -1,53 +1,53 @@
 # Azure Virtual Desktop and Windows 365 Client Kiosk Solutions
 
-## Introduction
+## 📋 Introduction
 
 This repository contains scripts and supporting artifacts to configure a Windows client operating system to act as a custom Azure Virtual Desktop (AVD) or Windows 365 client kiosk. The repository provides **two distinct kiosk solutions** to meet different organizational needs and client preferences.
 
-## Kiosk Solutions Overview
+## 🎯 Kiosk Solutions Overview
 
 ### 1. Windows App Kiosk
 
-**Location:** [`source/WindowsApp/`](source/WindowsApp/)  
-**Documentation:** [Windows App Kiosk README](source/WindowsApp/README.md)
+**📂 Location:** [`source/WindowsApp/`](source/WindowsApp/)  
+**📖 Documentation:** [Windows App Kiosk README](source/WindowsApp/README.md)
 
 The modern Windows App kiosk solution leverages Microsoft's latest remote desktop technology with streamlined configuration and built-in security features. This solution is ideal for organizations seeking:
 
-- **Modern Technology:** Uses the latest Windows App with native Microsoft features
-- **Simplified Configuration:** Streamlined setup with fewer complex parameters
-- **Built-in Auto Logoff:** Native Windows App automatic logoff and reset capabilities
-- **Easier Management:** Reduced complexity while maintaining security
+- **🚀 Modern Technology:** Uses the latest Windows App with native Microsoft features
+- **⚡ Simplified Configuration:** Streamlined setup with fewer complex parameters
+- **🔄 Built-in Auto Logoff:** Native Windows App automatic logoff and reset capabilities
+- **📊 Easier Management:** Reduced complexity while maintaining security
 
 **Key Features:**
 
-- Windows Operating System Autologon support
-- Windows App Single App Kiosk or Multi-App Kiosk with restricted user experience and customized Start Menu
-- Native Windows App auto logoff behaviors (ResetAppOnCloseOnly, ResetAppAfterConnection, ResetAppOnCloseOrIdle)
-- Streamlined provisioning package deployment
-- Smart card integration with Windows security policies
-- Modern user interface with Settings app access options
+✅ Windows Operating System Autologon support  
+✅ Windows App Single App Kiosk or Multi-App Kiosk with restricted user experience and customized Start Menu  
+✅ Native Windows App auto logoff behaviors (ResetAppOnCloseOnly, ResetAppAfterConnection, ResetAppOnCloseOrIdle)  
+✅ Streamlined provisioning package deployment  
+✅ Smart card integration with Windows security policies  
+✅ Modern user interface with Settings app access options
 
 ### 2. Remote Desktop Client for Windows Kiosk
 
-**Location:** [`source/RemoteDesktopClient/`](source/RemoteDesktopClient/)  
-**Documentation:** [Remote Desktop Client Kiosk README](source/RemoteDesktopClient/README.md)
+**📂 Location:** [`source/RemoteDesktopClient/`](source/RemoteDesktopClient/)  
+**📖 Documentation:** [Remote Desktop Client Kiosk README](source/RemoteDesktopClient/README.md)
 
 The traditional Remote Desktop Client for Windows kiosk solution provides comprehensive customization options and advanced trigger-based security actions. This solution is ideal for organizations requiring:
 
-- **Advanced Security Features:** Smart card and FIDO2 device removal triggers with customizable actions (lock, logoff, reset client)
-- **Session Management:** Automatic client reset based on connection events, idle timeouts, and user disconnect scenarios  
-- **Complex Trigger Logic:** Detailed control over system responses to various security events
+- **🔐 Advanced Security Features:** Smart card and FIDO2 device removal triggers with customizable actions (lock, logoff, reset client)
+- **📡 Session Management:** Automatic client reset based on connection events, idle timeouts, and user disconnect scenarios  
+- **⚙️ Complex Trigger Logic:** Detailed control over system responses to various security events
 
 **Key Features:**
 
-- Windows Operating System Autologon support
-- Auto Subscription to the user feed
-- Remote Desktop Client shell or Multi-App Kiosk with restricted user experience and customized Start Menu
-- WMI Event-based monitoring and automated responses
-- Support for Settings app access options
-- **Support for air-gapped government clouds**
+✅ Windows Operating System Autologon support  
+✅ Auto Subscription to the user feed  
+✅ Remote Desktop Client shell or Multi-App Kiosk with restricted user experience and customized Start Menu  
+✅ WMI Event-based monitoring and automated responses  
+✅ Support for Settings app access options  
+✅ **Support for air-gapped government clouds**
 
-## Solution Comparison
+## 📊 Solution Comparison
 
 | Feature | Windows App | Remote Desktop Client |
 | :------ | :---------: | :-------------------: |
@@ -55,43 +55,45 @@ The traditional Remote Desktop Client for Windows kiosk solution provides compre
 | **Security Triggers** | Smart Card Removal, Idle, App Close | Device Removal (Smart Card or FIDO2), Idle, Session Disconnect, App Close |
 | **Auto Logoff** | Native Windows App Features | Custom Script-based |
 
-**Choose Windows App Kiosk if you want:**
+### 💡 Choosing the Right Solution
 
-- Simplified configuration and maintenance
-- Native Microsoft auto logoff features
-- Streamlined user experience
-- Easier long-term management
+**Choose Windows App Kiosk (Recommended):**
 
-**Choose Remote Desktop Client Kiosk if you need:**
+✅ Modern, actively supported client technology  
+✅ Simplified configuration and maintenance  
+✅ Native Microsoft auto logoff features  
+✅ Streamlined user experience  
+✅ Easier long-term management
 
-- Support for Air-Gapped government clouds
-- Advanced security triggers and custom actions
-- Maximum customization and control
+**Choose Remote Desktop Client Kiosk only if you require:**
+
+⚠️ **Support for Air-Gapped Government Clouds** (until Windows App adds support)
+
+> [!IMPORTANT]
+> **Deprecation Notice:** The Remote Desktop Client for Windows is scheduled for deprecation in commercial environments at the end of **March 2026**. Support for the Remote Desktop Client kiosk solution will be removed from this repository once Windows App officially supports air-gapped government cloud environments. Organizations should plan to migrate to the Windows App kiosk solution.
 
 This kiosk solution can be used for numerous scenarios including secure remote access, shared workstations, and dedicated Azure Virtual Desktop endpoints.
 
-## Prerequisites
+## ✅ Prerequisites
 
 ### General Requirements
 
-1. **Operating System:** A currently [supported version of Windows](https://learn.microsoft.com/en-us/windows/release-health/supported-versions-windows-client)
-   - **Remote Desktop Client Kiosk:** Windows 10 or 11
-   - **Windows App Kiosk:** Windows 10 or 11
+1. **💻 Operating System:** A currently [supported version of Windows](https://learn.microsoft.com/en-us/windows/release-health/supported-versions-windows-client)
 
-2. **Windows Editions:** Depending on the kiosk configuration chosen, different Windows editions are supported:
-   - **Remote Desktop Client Client Shell:** Education, Enterprise, Enterprise LTSC, IoT Enterprise, IoT Enterprise LTSC
-   - **All Other configurations:** All above editions plus Pro and Pro Education
+2. **📀 Windows Editions:** Depending on the kiosk configuration chosen, different Windows editions are supported:
+   - **Shell Launcher:** Education, Enterprise, Enterprise LTSC, IoT Enterprise, IoT Enterprise LTSC
+   - **Multi-App Kiosk:** All above editions plus Pro and Pro Education
 
-3. **Administrative Access:** The ability to run installation scripts with SYSTEM privileges (instructions provided in each solution's documentation)
+3. **🔑 Administrative Access:** The ability to run installation scripts with SYSTEM privileges (instructions provided in each solution's documentation)
 
-4. **Device Management:** For most scenarios, devices should be [joined to Entra ID](https://learn.microsoft.com/en-us/entra/identity/devices/concept-directory-join) or [Entra ID Hybrid Joined](https://learn.microsoft.com/en-us/entra/identity/devices/concept-hybrid-join)
+4. **🔐 Device Management:** For some scenarios, devices must be [joined to Entra ID](https://learn.microsoft.com/en-us/entra/identity/devices/concept-directory-join) or [Entra ID Hybrid Joined](https://learn.microsoft.com/en-us/entra/identity/devices/concept-hybrid-join)
 
 ### Solution-Specific Requirements
 
 - **Remote Desktop Client Kiosk:** See [detailed requirements](source/RemoteDesktopClient/README.md#prerequisites)
 - **Windows App Kiosk:** See [detailed requirements](source/WindowsApp/README.md#prerequisites)
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Choose Your Solution
 
@@ -99,7 +101,7 @@ Select the appropriate kiosk solution based on your requirements:
 
 #### Option 1: Windows App Kiosk
 
-**Best for:** Modern Windows 11 deployments seeking simplified configuration
+**🎯 Best for:** Modern Windows 10 or 11 deployments seeking simplified configuration
 
 📖 **[View Windows App Kiosk Documentation](source/WindowsApp/README.md)**
 
@@ -111,7 +113,7 @@ Select the appropriate kiosk solution based on your requirements:
 
 #### Option 2: Remote Desktop Client for Windows Kiosk
 
-**Best for:** Organizations needing advanced security features
+**🎯 Best for:** Air-gapped government cloud environments (until Windows App support is available)
 
 📖 **[View Remote Desktop Client Kiosk Documentation](source/RemoteDesktopClient/README.md)**
 
@@ -121,13 +123,13 @@ Select the appropriate kiosk solution based on your requirements:
 2. Follow the installation instructions in the README
 3. Run `Set-RemoteDesktopKioskSettings.ps1` with your desired parameters
 
-## Additional Resources
+## 📚 Additional Resources
 
 - [Azure Virtual Desktop Documentation](https://learn.microsoft.com/en-us/azure/virtual-desktop/)
 - [Windows Assigned Access](https://learn.microsoft.com/en-us/windows/configuration/assigned-access/)
 - [Entra ID Device Management](https://learn.microsoft.com/en-us/entra/identity/devices/)
 
-## Support
+## 💬 Support
 
 For issues, questions, or contributions:
 

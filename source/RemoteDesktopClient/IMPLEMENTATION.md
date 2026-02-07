@@ -6,11 +6,18 @@
 
 ## Table of Contents
 
-- [Parameters](#parameters)
-- [Air-Gapped Cloud Support](#air-gapped-cloud-support)
-- [Manual Installation](#manual-installation)
-- [Manual Removal](#manual-removal)
-- [Troubleshooting](#troubleshooting)
+- [Azure Virtual Desktop Client Kiosk - Implementation Guide](#azure-virtual-desktop-client-kiosk---implementation-guide)
+  - [Table of Contents](#table-of-contents)
+  - [Parameters](#parameters)
+  - [Air-Gapped Cloud Support](#air-gapped-cloud-support)
+    - [PowerShell](#powershell)
+    - [Air-Gapped Cloud Documentation](#air-gapped-cloud-documentation)
+  - [Manual Installation](#manual-installation)
+  - [Manual Removal](#manual-removal)
+  - [Troubleshooting](#troubleshooting)
+    - [Logging](#logging)
+    - [Emergency Access](#emergency-access)
+    - [Configuration Verification](#configuration-verification)
 
 ## Parameters
 
@@ -77,7 +84,7 @@ In order to use this solution in Microsoft's US Government Air-Gapped clouds, yo
 ## Manual Installation
 
 > [!Important]
-> You need to run the PowerShell script with system priviledges. The easiest way to do this is to download [PSExec](https://learn.microsoft.com/en-us/sysinternals/downloads/psexec). Then extract the Zip to a folder and open an administrative command prompt.
+> You need to run the PowerShell script with system privileges. The easiest way to do this is to download [PSExec](https://learn.microsoft.com/en-us/sysinternals/downloads/psexec). Then extract the Zip to a folder and open an administrative command prompt.
 
 1. Either clone the repo or download it as a zip file. If downloading the repo as a zip file, then extract it to a new folder.
 
@@ -143,14 +150,6 @@ In order to use this solution in Microsoft's US Government Air-Gapped clouds, yo
       .\Set-RemoteDesktopClientKioskSettings.ps1 -AutoLogon -SystemDisconnectAction 'ResetClient' -UserDisconnectSignOutAction 'ResetClient' -IdleTimeoutAction 'ResetClient' -IdleTimeout 900
       ```
   
-    ### Scenario 3 Options
-
-    For this scenario, you do **not** want to specify a Trigger, any Trigger Actions, or AutoLogon. Instead you would need to configure the system to autologon an Entra ID user using the [AutoLogon SysInternals utility](https://learn.microsoft.com/en-us/sysinternals/downloads/autologon). In addition, you would want to assign only one Remote Application group with a single application to the Entra ID user and ensure that the session hosts in the pool hosting this application do not timeout the user session via the MachineInactivityLimit setting. The custom Launch-AVDClient.ps1 script would automatically launch this single remote application at logon.
-
-    ``` powershell
-    .\Set-RemoteDesktopClientKioskSettings.ps1
-    ```
-
     ### Other Parameters
 
     - Replace the Windows default shell with the Remote Desktop client.

@@ -86,7 +86,7 @@ The figure below illustrates the Settings applet restricted to allow the user to
 
 ![Restricted Settings App](../../docs/media/Settings.png)
 
-#### Windows App Shell Laucher Kiosk
+#### Windows App Shell Launcher Kiosk
 
 When the `WindowsAppShell` parameter is selected, the Windows App replaces the default Windows 'Explorer.exe' shell using [Shell Launcher](https://learn.microsoft.com/en-us/windows/configuration/shell-launcher/).
 
