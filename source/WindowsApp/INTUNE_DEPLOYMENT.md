@@ -193,7 +193,7 @@ If using idle lock timeout without AutoLogon:
 
 #### Automatic Maintenance
 
-> **Important:** If you set the 'Maintenance Start Time' with the **Shared PC** profile (step 1 in Common Settings), automatic maintenance settings are already managed by that profile. Only configure these settings separately if you did **not** configure the 'Maintenance Start Time' using the Shared PC profile. Configuring both may cause conflicts. For more information, see [Set up a shared or guest PC with Windows](https://learn.microsoft.com/en-us/windows/configuration/shared-pc/).
+> **Important:** If you supplied a Maintenance Start Time with the **Shared PC** profile (step 1 in Common Settings), automatic maintenance settings are already managed by that profile. Only configure these settings separately if you did **not** configure the Maintenance Start Time using the Shared PC profile. Configuring both may cause conflicts. For more information, see [Set up a shared or guest PC with Windows](https://learn.microsoft.com/en-us/windows/configuration/shared-pc/).
 
 If enabling automatic maintenance without Shared PC:
 
@@ -205,7 +205,7 @@ If enabling automatic maintenance without Shared PC:
 
 #### Power Management
 
-> **Important:** If you set the 'Set Power Policies' setting of the **Shared PC** profile (step 1 in Common Settings), power management settings (sleep timeouts, hibernate) are already managed by that profile. Only configure these settings separately if you did **not** 'Set Power Policies' via the Shared PC profile. Configuring both may cause conflicts. For more information, see [Set up a shared or guest PC with Windows](https://learn.microsoft.com/en-us/windows/configuration/shared-pc/).
+> **Important:** If you enabled the Power Policies setting of the **Shared PC** profile (step 1 in Common Settings), power management settings (sleep timeouts, hibernate) are already managed by that profile. Only configure these settings separately if you did **not** enable Power Policies via the Shared PC profile. Configuring both may cause conflicts. For more information, see [Set up a shared or guest PC with Windows](https://learn.microsoft.com/en-us/windows/configuration/shared-pc/).
 
 If configuring power management without Shared PC:
 
