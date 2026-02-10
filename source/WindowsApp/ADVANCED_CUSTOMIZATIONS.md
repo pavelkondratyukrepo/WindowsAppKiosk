@@ -47,7 +47,8 @@ When you add Microsoft Edge to the allowed apps list, you must include **all** o
 
 For Edge you must allow:
 
-- `msedge_proxy.exe` for certain browser operations especially when you used pinned secondary tiles
+- `msedge.exe` the browser executable
+- `msedge_proxy.exe` used when secondary tiles are configured
 - `MicrosoftEdgeUpdate.exe` for browser updates
 
 For Windows App allow:
