@@ -12,7 +12,6 @@
     - [Why So Many Executables?](#why-so-many-executables)
   - [Understanding Child Process Requirements](#understanding-child-process-requirements)
     - [How to Identify Child Processes](#how-to-identify-child-processes)
-    - [Common Examples](#common-examples)
   - [Custom Start Menu Layouts](#custom-start-menu-layouts)
   - [Additional Resources](#additional-resources)
 
@@ -80,15 +79,6 @@ To determine which executables an application might launch:
 3. **Test in Kiosk Mode:** Deploy your configuration to a test device and monitor for failures or unexpected behavior. Check Event Viewer for AppLocker blocks (Applications and Services Logs > Microsoft > Windows > AppLocker).
 
 4. **Vendor Documentation:** Check the application vendor's documentation for known dependencies or required executables.
-
-### Common Examples
-
-| Application | Additional Executables Required |
-| :---------- | :------------------------------ |
-| Microsoft Edge | `msedge.exe`, `msedge_proxy.exe`, `msedgewebview2.exe`, `MicrosoftEdgeUpdate.exe` |
-| Windows App | `windows365.exe` (when Edge is present) |
-| Microsoft Teams | Multiple executables in the Teams installation folder |
-| Google Chrome | `chrome.exe`, various child processes in the Chrome folder |
 
 ## Custom Start Menu Layouts
 
