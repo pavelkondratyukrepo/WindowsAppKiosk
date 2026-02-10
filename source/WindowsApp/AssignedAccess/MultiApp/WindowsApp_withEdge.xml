@@ -13,6 +13,7 @@
           <App AppUserModelId="MicrosoftCorporationII.Windows365_8wekyb3d8bbwe!Windows365" />
           <App DesktopAppPath="windows365.exe" />
           <App DesktopAppPath="msedgewebview2.exe" />
+          <App DesktopAppPath="msrdc.exe" />
          </AllowedApps>
       </AllAppsList>
       <v5:StartPins>
