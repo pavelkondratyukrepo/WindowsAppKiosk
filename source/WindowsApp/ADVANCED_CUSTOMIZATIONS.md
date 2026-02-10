@@ -35,18 +35,30 @@ The example configuration includes:
   <App AppUserModelId="MicrosoftCorporationII.Windows365_8wekyb3d8bbwe!Windows365" />
   <App DesktopAppPath="windows365.exe" />
   <App DesktopAppPath="msedgewebview2.exe" />
+  <App DesktopAppPath="msrdc.exe" />
 </AllowedApps>
 ```
 
 ### Why So Many Executables?
 
-When you add Microsoft Edge to the allowed apps list, you must include **all** of its child process executables. This is because Edge:
+When you add Microsoft Edge to the allowed apps list, you must include **all** of the required executables including child processes for any app that you want to allow.
 
-- Uses `msedge_proxy.exe` for certain browser operations
-- Requires `msedgewebview2.exe` for WebView2 content
-- Uses `MicrosoftEdgeUpdate.exe` for browser updates
-- May launch `crossdeviceresume.exe` for cross-device features
-- Can launch Windows App (`windows365.exe`) when connecting to Cloud PCs or Azure Virtual Desktop
+> **Important Note on Local Policy Creation:** When Microsoft Edge is allowed via Multi-App kiosk mode, Windows automatically creates local policies on the device that update the `restrictRun` registry keys located at `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer`. Specifically, the system applies the "Run only specified Windows applications" policy (also referred to as RestrictRun) to enforce application restrictions for the kiosk user. This is part of how Assigned Access converts your XML configuration into AppLocker rules and user-level policies at runtime. For more information, see [Assigned Access policy settings](https://learn.microsoft.com/en-us/windows/configuration/assigned-access/policy-settings#user-policy-settings) and [AppLocker rules](https://learn.microsoft.com/en-us/windows/configuration/assigned-access/policy-settings#applocker-rules).
+
+For Edge you must allow:
+
+- `msedge_proxy.exe` for certain browser operations especially when you used pinned secondary tiles
+- `MicrosoftEdgeUpdate.exe` for browser updates
+
+For Windows App allow:
+
+- `windows365.exe` which is the underlying executable for the user interface
+- `msedgewebview2.exe` for which is how the Windows App displays WebView2 content
+- `msrdc.exe` to launch connections to resources.
+
+For Windows allow:
+
+- `crossdeviceresume.exe` which is part of the cross devices experience service. Note that this may no longer be needed. There was an issue in a recent update requiring this workaround.
 
 If you don't include these executables, those features will fail silently or Edge may not function properly within the kiosk environment.
 
