@@ -50,13 +50,13 @@ For Edge you must allow:
 - `msedge_proxy.exe` used when secondary tiles are configured
 - `MicrosoftEdgeUpdate.exe` for browser updates
 
-For Windows App allow:
+For Windows App you must allow:
 
 - `windows365.exe` which is the underlying executable for the user interface
 - `msedgewebview2.exe` for which is how the Windows App displays WebView2 content
 - `msrdc.exe` to launch connections to resources.
 
-For Windows allow:
+For Windows you must allow:
 
 - `crossdeviceresume.exe` which is part of the cross devices experience service. Note that this may no longer be needed. There was an issue in a recent update requiring this workaround.
 
