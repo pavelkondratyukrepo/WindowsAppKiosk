@@ -7,6 +7,12 @@
     It supports automatic download of the latest version or offline installation from a local MSIX file.
     The script also configures Windows App auto logoff settings to manage user sessions and app data
     based on inactivity, app closure, or successful connections.
+    
+    For offline deployments, you can download the Windows App package including dependencies using:
+    winget download --id 9N1F85V9T8BN --architecture=x64 -d <destination-folder> --accept-package-agreements --accept-source-agreements --skip-license
+    
+    This winget command downloads the MSIX package and the latest dependency files, ensuring you have
+    the most up-to-date versions for offline installation.
 
 .PARAMETER DeploymentType
     Specifies the deployment action. Valid values are 'Install' (default) or 'Uninstall'.
@@ -26,6 +32,14 @@
 .PARAMETER SkipFirstRunExperience
     When specified, skips the First Run Experience (FRE) after Windows App is launched.
     Recommended for kiosk scenarios to streamline the user experience.
+
+.PARAMETER DisableAutomaticUpdates
+    Controls automatic updates for Windows App. Valid values (0-3):
+    - 0 (default): Enable updates
+    - 1: Disable updates
+    - 2: Disable updates from the Microsoft Store
+    - 3: Disable updates from the CDN location
+    For more information, see: https://learn.microsoft.com/en-us/windows-app/configure-updates-windows
 
 .EXAMPLE
     .\Deploy-WindowsApp.ps1
@@ -47,6 +61,14 @@
     .\Deploy-WindowsApp.ps1 -DeploymentType Uninstall
     Uninstalls Windows App from the system.
 
+.EXAMPLE
+    .\Deploy-WindowsApp.ps1 -DisableAutomaticUpdates 1 -SkipFirstRunExperience
+    Installs Windows App with automatic updates disabled.
+
+.EXAMPLE
+    .\Deploy-WindowsApp.ps1 -DisableAutomaticUpdates 2 -SkipFirstRunExperience
+    Installs Windows App with updates from Microsoft Store disabled.
+
 .NOTES
     File Name      : Deploy-WindowsApp.ps1
     Prerequisite   : Windows 10/11 with AppX support
@@ -57,17 +79,24 @@
       - AutoLogoffEnable (DWORD): 0=Disabled, 1=Enabled
       - AutoLogoffOnSuccessfulConnect (DWORD): 1=Reset after connection
       - AutoLogoffTimeInterval (DWORD): Idle interval in minutes
+      - DisableAutomaticUpdates (DWORD): 0=Enable updates, 1=Disable updates, 2=Disable Store updates, 3=Disable CDN updates
     - HKLM:\SOFTWARE\Microsoft\Windows365
       - SkipFRE (DWORD): 1=Skip First Run Experience
     
     For more information on auto logoff, see:
     https://learn.microsoft.com/en-us/windows-app/windowsautologoff
+    
+    For more information on configuring updates, see:
+    https://learn.microsoft.com/en-us/windows-app/configure-updates-windows
 
 .LINK
     https://learn.microsoft.com/en-us/windows-app/overview
 
 .LINK
     https://learn.microsoft.com/en-us/windows-app/windowsautologoff
+
+.LINK
+    https://learn.microsoft.com/en-us/windows-app/configure-updates-windows
 #>
 
 Param
@@ -84,7 +113,11 @@ Param
     [int]$AutoLogoffTimeInterval = 60,
 
     [Parameter(Mandatory = $false)]
-    [switch]$SkipFirstRunExperience
+    [switch]$SkipFirstRunExperience,
+
+    [Parameter(Mandatory = $false)]
+    [ValidateRange(0, 3)]
+    [int]$DisableAutomaticUpdates = 0
 )
 
 #region Initialization
@@ -164,16 +197,36 @@ If ($DeploymentType -ne "Uninstall") {
         Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
     }
 
+    Write-Output "Configuring RunOnce for Windows App installation on first logon for Default User profile"
+    $RunOnceCmd = "cmd /c start /min `"`" powershell.exe -EP Bypass -NoLogo -NonInteractive -NoProfile -WindowStyle Hidden -Command `"Add-AppxPackage -RegisterByFamilyName -MainPackage MicrosoftCorporationII.Windows365_8wekyb3d8bbwe -EA SilentlyContinue`""
+
+    # Default User
+    Write-Output "Loading NTUSER.DAT for Default User"
+    REG.EXE LOAD HKLM\Default C:\Users\Default\NTUSER.DAT | Out-Null
+
+    try {        
+        Write-Output "Creating RunOnce 'InstallWindowsApp' for Default User"
+        $DefaultUserRunOncePath = "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\RunOnce"
+        if (-not (Test-Path $DefaultUserRunOncePath)) {
+            New-Item -Path $DefaultUserRunOncePath -Force | Out-Null
+        }
+        New-ItemProperty -Path $DefaultUserRunOncePath -PropertyType String -Name InstallWindowsApp -Value $RunOnceCmd -Force | Out-Null
+    }
+    finally {
+        [GC]::Collect()
+        REG.EXE UNLOAD HKLM\Default | Out-Null
+    }
+
     # Configure Windows App Auto Logoff settings
+    $WindowsAppRegPath = "HKLM:\SOFTWARE\Microsoft\WindowsApp"
+
+    # Ensure registry paths exist
+    if (-not (Test-Path $WindowsAppRegPath)) {
+        New-Item -Path $WindowsAppRegPath -Force | Out-Null
+    }
+
     if ($AutoLogoffConfig -and $AutoLogoffConfig -ne 'Disabled') {
         Write-Output "Configuring Windows App Auto Logoff settings..."
-        $WindowsAppRegPath = "HKLM:\SOFTWARE\Microsoft\WindowsApp"
-        $Windows365RegPath = "HKLM:\SOFTWARE\Microsoft\Windows365"
-
-        # Ensure registry paths exist
-        if (-not (Test-Path $WindowsAppRegPath)) {
-            New-Item -Path $WindowsAppRegPath -Force | Out-Null
-        }
 
         switch ($AutoLogoffConfig) {
             'ResetAppOnCloseOnly' {
@@ -202,24 +255,29 @@ If ($DeploymentType -ne "Uninstall") {
                 Remove-ItemProperty -Path $WindowsAppRegPath -Name "AutoLogoffOnSuccessfulConnect" -ErrorAction SilentlyContinue
             }
         }
-
-        # Configure SkipFRE if specified
-        if ($SkipFirstRunExperience) {
-            Write-Output "Configuring Windows App to skip First Run Experience"
-            if (-not (Test-Path $Windows365RegPath)) {
-                New-Item -Path $Windows365RegPath -Force | Out-Null
-            }
-            New-ItemProperty -Path $Windows365RegPath -Name "SkipFRE" -PropertyType DWORD -Value 1 -Force | Out-Null
-        }
-        else {
-            # Ensure FRE is enabled (default behavior)
-            if (Test-Path $Windows365RegPath) {
-                Remove-ItemProperty -Path $Windows365RegPath -Name "SkipFRE" -ErrorAction SilentlyContinue
-            }
-        }
-
-        Write-Output "Windows App Auto Logoff configuration completed successfully"
     }
+
+    # Configure DisableAutomaticUpdates
+    Write-Output "Configuring Windows App automatic updates (DisableAutomaticUpdates=$DisableAutomaticUpdates)"
+    New-ItemProperty -Path $WindowsAppRegPath -Name "DisableAutomaticUpdates" -PropertyType DWORD -Value $DisableAutomaticUpdates -Force | Out-Null
+
+    # Configure SkipFRE if specified
+    if ($SkipFirstRunExperience) {
+        $Windows365RegPath = "HKLM:\SOFTWARE\Microsoft\Windows365"
+        Write-Output "Configuring Windows App to skip First Run Experience"
+        if (-not (Test-Path $Windows365RegPath)) {
+            New-Item -Path $Windows365RegPath -Force | Out-Null
+        }
+        New-ItemProperty -Path $Windows365RegPath -Name "SkipFRE" -PropertyType DWORD -Value 1 -Force | Out-Null
+    }
+    else {
+        # Ensure FRE is enabled (default behavior)
+        if (Test-Path $Windows365RegPath) {
+            Remove-ItemProperty -Path $Windows365RegPath -Name "SkipFRE" -ErrorAction SilentlyContinue
+        }
+    } 
+
+    Write-Output "Windows App configuration completed successfully"
 }
 Else {
     [string]$Script:LogName = "Uninstall" + ($SoftwareName -Replace ' ', '') + ".log"
@@ -237,7 +295,8 @@ Else {
         Remove-ItemProperty -Path $WindowsAppRegPath -Name "AutoLogoffEnable" -ErrorAction SilentlyContinue
         Remove-ItemProperty -Path $WindowsAppRegPath -Name "AutoLogoffOnSuccessfulConnect" -ErrorAction SilentlyContinue
         Remove-ItemProperty -Path $WindowsAppRegPath -Name "AutoLogoffTimeInterval" -ErrorAction SilentlyContinue
-        Write-Output "Removed Auto Logoff settings from Windows App registry key"
+        Remove-ItemProperty -Path $WindowsAppRegPath -Name "DisableAutomaticUpdates" -ErrorAction SilentlyContinue
+        Write-Output "Removed Auto Logoff and update settings from Windows App registry key"
     }
     
     if (Test-Path $Windows365RegPath) {
