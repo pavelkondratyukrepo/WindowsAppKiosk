@@ -51,6 +51,18 @@ On a device with internet access, download the Windows App MSIX package:
    Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/?linkid=2262633' -OutFile 'WindowsApp.msix'
    ```
 
+3. **Option C: Using WinGet (Recommended)**
+
+   Download the entire package including the MSIX and updated dependencies using Windows Package Manager:
+
+   ```powershell
+   winget download --id 9N1F85V9T8BN --architecture=x64 -d <destination-folder> --accept-package-agreements --accept-source-agreements --skip-license
+   ```
+
+   Replace `<destination-folder>` with your desired download location (e.g., `C:\Temp\WindowsApp`).
+   
+   **Note:** This method automatically downloads the latest dependencies, ensuring you have the most up-to-date versions.
+
 #### Step 2: Transfer Files
 
 Transfer the downloaded MSIX file to the target device and place it in the same folder as the script.
@@ -88,6 +100,66 @@ To remove Windows App from the device:
 
 ```powershell
 .\Deploy-WindowsApp.ps1 -DeploymentType Uninstall
+```
+
+## Configuration Options
+
+The deployment script supports several parameters to customize the Windows App installation:
+
+### Automatic Updates
+
+Control how Windows App handles automatic updates. Valid values are:
+
+- **0** (default): Enable updates
+- **1**: Disable updates
+- **2**: Disable updates from the Microsoft Store
+- **3**: Disable updates from the CDN location
+
+```powershell
+# Enable automatic updates (default)
+.\Deploy-WindowsApp.ps1 -DisableAutomaticUpdates 0
+
+# Disable all automatic updates
+.\Deploy-WindowsApp.ps1 -DisableAutomaticUpdates 1
+
+# Disable updates from Microsoft Store
+.\Deploy-WindowsApp.ps1 -DisableAutomaticUpdates 2
+
+# Disable updates from CDN location
+.\Deploy-WindowsApp.ps1 -DisableAutomaticUpdates 3
+```
+
+For more information about configuring updates, see: [Configure Windows App updates](https://learn.microsoft.com/en-us/windows-app/configure-updates-windows)
+
+### Skip First Run Experience
+
+Skip the initial setup wizard when Windows App first launches (recommended for kiosk scenarios):
+
+```powershell
+.\Deploy-WindowsApp.ps1 -SkipFirstRunExperience
+```
+
+### Auto Logoff Configuration
+
+Configure automatic user logoff behavior for kiosk scenarios:
+
+```powershell
+# Reset app when closed
+.\Deploy-WindowsApp.ps1 -AutoLogoffConfig ResetAppOnCloseOnly
+
+# Reset app after successful connection
+.\Deploy-WindowsApp.ps1 -AutoLogoffConfig ResetAppAfterConnection
+
+# Reset app on close or after idle timeout
+.\Deploy-WindowsApp.ps1 -AutoLogoffConfig ResetAppOnCloseOrIdle -AutoLogoffTimeInterval 15
+```
+
+For more information, see: [Windows App auto logoff](https://learn.microsoft.com/en-us/windows-app/windowsautologoff)
+
+### Combined Configuration Example
+
+```powershell
+.\Deploy-WindowsApp.ps1 -DisableAutomaticUpdates 1 -SkipFirstRunExperience -AutoLogoffConfig ResetAppOnCloseOnly
 ```
 
 ## Detection Script
@@ -156,6 +228,8 @@ This deployment can be integrated with:
 ## Additional Resources
 
 - [Windows App Documentation](https://learn.microsoft.com/windows-app/)
+- [Configure Windows App Updates](https://learn.microsoft.com/en-us/windows-app/configure-updates-windows)
+- [Windows App Auto Logoff](https://learn.microsoft.com/en-us/windows-app/windowsautologoff)
 - [Azure Virtual Desktop](https://learn.microsoft.com/azure/virtual-desktop/)
 - [Windows 365](https://learn.microsoft.com/windows-365/)
 
@@ -165,3 +239,6 @@ This deployment can be integrated with:
 - Existing versions are automatically removed before installing new versions
 - The script automatically detects 32-bit PowerShell and relaunches in 64-bit mode if needed
 - Downloaded MSIX files are temporarily stored in `C:\Windows\SystemTemp` and cleaned up after installation
+- Configuration settings are stored in registry keys:
+  - `HKLM:\SOFTWARE\Microsoft\WindowsApp` - Auto logoff and update settings
+  - `HKLM:\SOFTWARE\Microsoft\Windows365` - First run experience settings
