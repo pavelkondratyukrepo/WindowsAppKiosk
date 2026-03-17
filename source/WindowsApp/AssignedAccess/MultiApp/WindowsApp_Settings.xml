@@ -5,6 +5,7 @@
       <AllAppsList>
         <AllowedApps>
           <App AppUserModelId="MicrosoftCorporationII.Windows365_8wekyb3d8bbwe!Windows365" rs5:AutoLaunch="true" />
+          <App AppUserModelId="Microsoft.Teams.SlimCoreVdiHost.win-x64_8wekyb3d8bbwe!MsTeamsVdi" />
           <App AppUserModelId="windows.immersivecontrolpanel_cw5n1h2txyewy!microsoft.windows.immersivecontrolpanel" />
          </AllowedApps>
       </AllAppsList>
