@@ -35,6 +35,8 @@ The example configuration includes:
   <App DesktopAppPath="windows365.exe" />
   <App DesktopAppPath="msedgewebview2.exe" />
   <App DesktopAppPath="msrdc.exe" />
+  <App AppUserModelId="Microsoft.Teams.SlimCoreVdiHost.win-x64_8wekyb3d8bbwe!MsTeamsVdi" />
+  <App DesktopAppPath="MsTeamsVdi.exe" />
 </AllowedApps>
 ```
 
@@ -55,6 +57,10 @@ For Windows App you must allow:
 - `windows365.exe` which is the underlying executable for the user interface
 - `msedgewebview2.exe` for which is how the Windows App displays WebView2 content
 - `msrdc.exe` to launch connections to resources.
+
+For Teams Optimizations you must allow:
+
+- `MsTeamsVdi.exe` which is the underlying teams slimcore optimization engine.
 
 For Windows you must allow:
 
@@ -119,3 +125,4 @@ For detailed guidance on Start menu customization, see Microsoft's [Customize th
 - [Process Monitor (Sysinternals)](https://learn.microsoft.com/en-us/sysinternals/downloads/procmon)
 - [Customize the Start Layout](https://learn.microsoft.com/en-us/windows/configuration/start/layout)
 - [AppLocker Overview](https://learn.microsoft.com/en-us/windows/security/application-security/application-control/windows-defender-application-control/applocker/applocker-overview)
+- [Teams VDI Slimcore Optimizations](https://learn.microsoft.com/en-us/microsoftteams/vdi-2#step-3-slimcore-msix-staging-and-registration-on-the-endpoint)
