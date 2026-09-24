@@ -110,13 +110,15 @@ The deployment script supports several parameters to customize the Windows App i
 
 Control how Windows App handles automatic updates. Valid values are:
 
-- **0** (default): Enable updates
+- **0**: Enable updates (Windows App default)
 - **1**: Disable updates
 - **2**: Disable updates from the Microsoft Store
 - **3**: Disable updates from the CDN location
 
+If you don't specify `-DisableAutomaticUpdates`, the existing setting is left unchanged. `Set-WindowsAppKioskSettings.ps1` disables all automatic updates on kiosks, so a Microsoft Store update can't replace the running app. To update Windows App on a kiosk, run this script again; it skips provisioning when the provisioned package is already the same or a newer version.
+
 ```powershell
-# Enable automatic updates (default)
+# Enable automatic updates
 .\Deploy-WindowsApp.ps1 -DisableAutomaticUpdates 0
 
 # Disable all automatic updates

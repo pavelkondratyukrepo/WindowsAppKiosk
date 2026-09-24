@@ -44,10 +44,12 @@
 
 .PARAMETER DisableAutomaticUpdates
     Controls automatic updates for Windows App. Valid values (0-3):
-    - 0 (default): Enable updates
+    - 0: Enable updates (Windows App default)
     - 1: Disable updates
     - 2: Disable updates from the Microsoft Store
     - 3: Disable updates from the CDN location
+    When not specified, the existing setting is left unchanged, so re-running this script to update
+    Windows App on a kiosk keeps automatic updates disabled.
     For more information, see: https://learn.microsoft.com/en-us/windows-app/configure-updates-windows
 
 .EXAMPLE
@@ -82,6 +84,7 @@
     .\Deploy-WindowsApp.ps1
     Run this again with a newer MSIX file to upgrade Windows App.
     The provisioned package is updated and Windows App automatically updates for existing users.
+    If the provisioned package is already the same or a newer version, provisioning is skipped.
 
 .NOTES
     File Name      : Deploy-WindowsApp.ps1
@@ -129,9 +132,41 @@ Param
     [int]$DisableAutomaticUpdates = 0
 )
 
+#region Functions
+
+Function Get-MsixPackageVersion {
+    # Reads the package version from the manifest inside an .msix or .msixbundle file. Returns $null if it can't be read.
+    Param ([string]$Path)
+    Try {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $Zip = [System.IO.Compression.ZipFile]::OpenRead($Path)
+        Try {
+            $Entry = $Zip.Entries | Where-Object { $_.FullName -eq 'AppxManifest.xml' -or $_.FullName -eq 'AppxMetadata/AppxBundleManifest.xml' } | Select-Object -First 1
+            If (-not $Entry) { Return $null }
+            $Reader = New-Object System.IO.StreamReader($Entry.Open())
+            Try {
+                [xml]$Manifest = $Reader.ReadToEnd()
+            }
+            Finally {
+                $Reader.Dispose()
+            }
+            Return [version]$Manifest.DocumentElement.Identity.Version
+        }
+        Finally {
+            $Zip.Dispose()
+        }
+    }
+    Catch {
+        Return $null
+    }
+}
+
+#endregion Functions
+
 #region Initialization
 
 $SoftwareName = 'Windows App'
+$PackageName = 'MicrosoftCorporationII.Windows365'
 $Url = 'https://go.microsoft.com/fwlink/?linkid=2262633'
 $Script:FullName = $MyInvocation.MyCommand.Path
 $Script:File = $MyInvocation.MyCommand.Name
@@ -172,11 +207,6 @@ If (-not (Test-Path -Path $Script:LogDir)) {
 If ($DeploymentType -ne "Uninstall") {
     [string]$Script:LogName = "Install-" + ($SoftwareName -Replace ' ', '') + ".log"
     Start-Transcript -Path (Join-Path -Path $Script:LogDir -ChildPath $Script:LogName) -Force
-    $CurrentVersion = Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -eq "MicrosoftCorporationII.Windows365" }
-    If ($CurrentVersion) {
-        Write-Output "Removing existing version of $SoftwareName"
-        $CurrentVersion | Remove-AppxProvisionedPackage -Online
-    }
     $MSIXPath = (Get-ChildItem -Path $PSScriptRoot -filter *.msix).FullName
     If (-not ($MSIXPath)) {
         Write-Output "Windows App MSIX package not found in $PSScriptRoot"
@@ -200,10 +230,37 @@ If ($DeploymentType -ne "Uninstall") {
 
     $DependenciesPath = (Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath "Dependencies") -filter *.appx).FullName
 
-    # Provision the app - registers automatically for new users and updates existing user profiles
-    Write-Output "Provisioning Windows App"
-    Add-AppxProvisionedPackage -Online -PackagePath $MSIXPath -DependencyPackagePath $DependenciesPath -SkipLicense
-    
+    $MSIXVersion = Get-MsixPackageVersion -Path $MSIXPath
+    If ($MSIXVersion) {
+        Write-Output "$SoftwareName package version: $MSIXVersion"
+    }
+    Else {
+        Write-Output "Could not read the package version from $MSIXPath. Provisioning without a version check."
+    }
+    $CurrentVersion = Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -eq $PackageName }
+    $HighestProvisionedVersion = $CurrentVersion | ForEach-Object { [version]$_.Version } | Sort-Object -Descending | Select-Object -First 1
+
+    If ($MSIXVersion -and $HighestProvisionedVersion -and $HighestProvisionedVersion -ge $MSIXVersion) {
+        Write-Output "Provisioned $SoftwareName version $HighestProvisionedVersion is the same as or newer than $MSIXVersion. Skipping provisioning."
+    }
+    Else {
+        If ($CurrentVersion) {
+            Write-Output "Removing existing version of $SoftwareName"
+            $CurrentVersion | Remove-AppxProvisionedPackage -Online
+        }
+        If ($MSIXVersion) {
+            # A per-user install of the same version (for example, one delivered by the Microsoft Store) blocks provisioning with
+            # "The provided package is already installed, and reinstallation of the package was blocked."
+            Get-AppxPackage -AllUsers -Name $PackageName | Where-Object { [version]$_.Version -eq $MSIXVersion } | ForEach-Object {
+                Write-Output "Removing $($_.PackageFullName) for all users so the same version can be provisioned"
+                Remove-AppxPackage -Package $_.PackageFullName -AllUsers
+            }
+        }
+        # Provision the app - registers automatically for new users and updates existing user profiles
+        Write-Output "Provisioning Windows App"
+        Add-AppxProvisionedPackage -Online -PackagePath $MSIXPath -DependencyPackagePath $DependenciesPath -SkipLicense
+    }
+
     if ($tempDir -and (Test-Path -Path $tempDir)) {
         Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
     }
@@ -248,9 +305,14 @@ If ($DeploymentType -ne "Uninstall") {
         }
     }
 
-    # Configure DisableAutomaticUpdates
-    Write-Output "Configuring Windows App automatic updates (DisableAutomaticUpdates=$DisableAutomaticUpdates)"
-    New-ItemProperty -Path $WindowsAppRegPath -Name "DisableAutomaticUpdates" -PropertyType DWORD -Value $DisableAutomaticUpdates -Force | Out-Null
+    # Configure DisableAutomaticUpdates only when requested, so an update run doesn't re-enable updates on a kiosk
+    If ($PSBoundParameters.ContainsKey('DisableAutomaticUpdates')) {
+        Write-Output "Configuring Windows App automatic updates (DisableAutomaticUpdates=$DisableAutomaticUpdates)"
+        New-ItemProperty -Path $WindowsAppRegPath -Name "DisableAutomaticUpdates" -PropertyType DWORD -Value $DisableAutomaticUpdates -Force | Out-Null
+    }
+    Else {
+        Write-Output "DisableAutomaticUpdates not specified. Leaving the existing Windows App update setting unchanged."
+    }
 
     # Configure SkipFRE if specified
     $Windows365RegPath = "HKLM:\SOFTWARE\Microsoft\Windows365"

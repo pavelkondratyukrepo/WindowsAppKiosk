@@ -327,6 +327,16 @@ Running on: $($OS.Caption) version $FullOSVersion
 "@
 Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Information -EventId 1 -Message $message
 
+# Shell Launcher only runs on Enterprise, Education, and IoT Enterprise editions (including LTSC).
+# https://learn.microsoft.com/en-us/windows/configuration/shell-launcher/#windows-edition-requirements
+If ($WindowsAppShell) {
+    $EditionID = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion").EditionID
+    If ($EditionID -notmatch '^(Enterprise|Education|IoTEnterprise)') {
+        Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Error -EventId 3 -Message "Shell Launcher is not supported on this Windows edition ('$EditionID'). It requires Enterprise, Education, or IoT Enterprise.`nIf this device is upgraded to Enterprise through subscription activation, it falls back to Pro when no licensed user has signed in for up to 90 days.`nRestore the Enterprise edition, or run this script without -WindowsAppShell to configure a multi-app kiosk instead."
+        Exit 1
+    }
+}
+
 If (Get-PendingReboot) {
     Write-Log -EventLog $EventLog -EventSource $EventSource -EntryType Warning -EventId 0 -Message "There is a reboot pending. This application cannot be installed when a reboot is pending.`nRebooting the computer in 15 seconds."
     Start-Process -FilePath 'shutdown.exe' -ArgumentList '/r /t 15' -NoNewWindow
@@ -674,6 +684,17 @@ if (($AutoLogonKiosk -and $WindowsAppAutoLogoffConfig -ne 'Disabled') -or $Share
         Value        = 1
         Description  = 'Disable First Run Experience in Windows App'
     }
+}
+
+# Stop Windows App from updating itself underneath the kiosk. A Microsoft Store update replaces the running app,
+# which can leave Shell Launcher unable to launch it. Update Windows App by re-running Deploy-WindowsApp.ps1 instead.
+# https://learn.microsoft.com/en-us/windows-app/configure-updates-windows
+$RegValues += [PSCustomObject]@{
+    Path         = 'HKLM:\SOFTWARE\Microsoft\WindowsApp'
+    Name         = 'DisableAutomaticUpdates'
+    PropertyType = 'DWord'
+    Value        = 1
+    Description  = 'Disable automatic updates of Windows App from all sources'
 }
 
 If ($AutoLogonKiosk) {
