@@ -59,7 +59,17 @@
                 <BinaryVersionRange LowSection="*" HighSection="*" />
                 </FilePublisherCondition>
             </Exceptions>
-        </FilePathRule>    
+        </FilePathRule>
+        <FilePathRule Id="7c1e4a2b-3d5f-4b8a-9e6c-1a2b3c4d5e01" Name="Defender for Endpoint platform binaries" Description="MDE sensor components (SenseNDR etc). Folder writable only by SYSTEM/Admins/TrustedInstaller." UserOrGroupSid="S-1-1-0" Action="Allow">
+            <Conditions>
+                <FilePathCondition Path="%OSDRIVE%\ProgramData\Microsoft\Windows Defender Advanced Threat Protection\Platform\*" />
+            </Conditions>
+        </FilePathRule>
+        <FilePathRule Id="7c1e4a2b-3d5f-4b8a-9e6c-1a2b3c4d5e02" Name="Defender Antivirus platform binaries" Description="Defender platform components (DlpUserAgent etc). Folder writable only by SYSTEM/Admins/TrustedInstaller." UserOrGroupSid="S-1-1-0" Action="Allow">
+            <Conditions>
+                <FilePathCondition Path="%OSDRIVE%\ProgramData\Microsoft\Windows Defender\Platform\*" />
+            </Conditions>
+        </FilePathRule>
     </RuleCollection>
     <RuleCollection Type="Msi" EnforcementMode="NotConfigured" />
     <RuleCollection Type="Script" EnforcementMode="NotConfigured" />
